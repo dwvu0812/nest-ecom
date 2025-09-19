@@ -17,7 +17,12 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "db:seed": "ts-node prisma/seeds/index.ts",
+    "db:reset": "npx prisma migrate reset --force && npx prisma db push && pnpm run db:seed",
+    "db:seed:languages": "ts-node -e \"import('./prisma/seeds/languages.seed').then(m => m.seedLanguages(new (require('./generated/prisma')).PrismaClient()))\"",
+    "db:seed:users": "ts-node -e \"import('./prisma/seeds/users.seed').then(m => m.seedUsers(...args))\"",
+    "db:seed:products": "ts-node -e \"import('./prisma/seeds/products.seed').then(m => m.seedProducts(...args))\""
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -25,6 +30,7 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@prisma/client": "^6.16.2",
+    "bcryptjs": "^3.0.2",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "pg": "^8.16.3",
