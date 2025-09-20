@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../generated/prisma';
+import { PrismaClient } from '@prisma/client';
 import { seedLanguages } from './languages.seed';
 import { seedPermissions } from './permissions.seed';
 import { seedRoles } from './roles.seed';

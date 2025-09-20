@@ -1,4 +1,4 @@
-import { PrismaClient, Permission } from '../../generated/prisma';
+import { PrismaClient, Permission } from '@prisma/client';
 
 export async function seedPermissions(
   prisma: PrismaClient,

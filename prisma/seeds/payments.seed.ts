@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../generated/prisma';
+import { PrismaClient } from '@prisma/client';
 
 export async function seedPayments(prisma: PrismaClient): Promise<void> {
   await prisma.paymentTransaction.createMany({

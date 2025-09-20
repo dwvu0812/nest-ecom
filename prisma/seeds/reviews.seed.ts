@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { PrismaClient, User } from '../../generated/prisma';
+import { PrismaClient, User } from '@prisma/client';
 
 export async function seedReviews(
   prisma: PrismaClient,

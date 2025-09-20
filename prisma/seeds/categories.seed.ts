@@ -1,4 +1,4 @@
-import { PrismaClient, Category, User, Language } from '../../generated/prisma';
+import { PrismaClient, Category, User, Language } from '@prisma/client';
 
 export async function seedCategories(
   prisma: PrismaClient,

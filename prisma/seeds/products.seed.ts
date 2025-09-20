@@ -1,12 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import {
-  Brand,
-  Language,
-  PrismaClient,
-  Product,
-  User,
-} from '../../generated/prisma';
+import { Brand, Language, PrismaClient, Product, User } from '@prisma/client';
 
 interface ProductData {
   iphone15: Product;

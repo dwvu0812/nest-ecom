@@ -1,4 +1,4 @@
-import { PrismaClient, Brand, User } from '../../generated/prisma';
+import { PrismaClient, Brand, User } from '@prisma/client';
 
 export async function seedBrands(
   prisma: PrismaClient,

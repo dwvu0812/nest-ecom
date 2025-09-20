@@ -1,5 +1,5 @@
 import * as bcrypt from 'bcryptjs';
-import { PrismaClient, Role, User } from '../../generated/prisma';
+import { PrismaClient, Role, User } from '@prisma/client';
 
 export async function seedUsers(
   prisma: PrismaClient,

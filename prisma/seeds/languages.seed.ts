@@ -1,4 +1,4 @@
-import { PrismaClient, Language } from '../../generated/prisma';
+import { PrismaClient, Language } from '@prisma/client';
 
 export async function seedLanguages(prisma: PrismaClient): Promise<{
   vietnamese: Language;
