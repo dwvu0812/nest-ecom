@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
@@ -11,6 +7,7 @@ import { RegisterDto } from './dto/register.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { securityConfig } from '../shared/config';
+import { UserException, ValidationException } from '../shared/exceptions';
 
 @Injectable()
 export class AuthService {
@@ -26,7 +23,7 @@ export class AuthService {
 
   async register(dto: RegisterDto) {
     const existing = await this.usersService.findByEmail(dto.email);
-    if (existing) throw new BadRequestException('Email đã được sử dụng');
+    if (existing) throw UserException.emailAlreadyExists(dto.email);
 
     const hashed = await bcrypt.hash(dto.password, securityConfig.bcryptRounds);
     await this.usersService.createUser({
@@ -75,10 +72,13 @@ export class AuthService {
       },
     });
     if (!code)
-      throw new BadRequestException('Mã xác minh không hợp lệ hoặc đã hết hạn');
+      throw ValidationException.invalidInput(
+        'verification_code',
+        'Mã xác minh không hợp lệ hoặc đã hết hạn',
+      );
 
     const user = await this.usersService.findByEmail(dto.email);
-    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
+    if (!user) throw UserException.userNotFound(dto.email);
 
     if (user.emailVerifiedAt) {
       // cleanup any stray codes
@@ -98,7 +98,7 @@ export class AuthService {
 
   async resendVerification(dto: ResendVerificationDto) {
     const user = await this.usersService.findByEmail(dto.email);
-    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
+    if (!user) throw UserException.userNotFound(dto.email);
     if (user.emailVerifiedAt) {
       return { message: 'Email đã được xác minh.' };
     }
@@ -115,8 +115,9 @@ export class AuthService {
     if (existing) {
       const createdAt = existing.createdAt as unknown as Date;
       if (createdAt && Date.now() - new Date(createdAt).getTime() < 60_000) {
-        throw new BadRequestException(
-          'Vui lòng chờ ít nhất 60 giây trước khi yêu cầu lại.',
+        throw ValidationException.invalidInput(
+          'resend_request',
+          'Vui lòng chờ ít nhất 60 giây trước khi yêu cầu lại',
         );
       }
     }

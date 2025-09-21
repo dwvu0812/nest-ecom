@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ResourceException } from '../shared/exceptions';
 
 @Injectable()
 export class UsersService {
@@ -18,7 +19,7 @@ export class UsersService {
 
   async getDefaultUserRoleId(): Promise<number> {
     const role = await this.prisma.role.findFirst({ where: { name: 'user' } });
-    if (!role) throw new NotFoundException('Default role not found');
+    if (!role) throw ResourceException.notFound('Default user role');
     return role.id;
   }
 
