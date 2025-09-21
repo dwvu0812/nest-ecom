@@ -140,4 +140,64 @@ export class UserRepository extends BaseRepository<User> {
       take: limit,
     });
   }
+
+  async findByGoogleId(googleId: string): Promise<UserWithRelations | null> {
+    return this.model.findFirst({
+      where: {
+        googleId,
+        deletedAt: null,
+      },
+      include: {
+        role: {
+          include: {
+            permissions: true,
+          },
+        },
+      },
+    });
+  }
+
+  async linkGoogleAccount(
+    userId: number,
+    googleId: string,
+    avatar?: string,
+  ): Promise<User> {
+    const updateData: any = { googleId };
+    if (avatar) updateData.avatar = avatar;
+
+    return this.update({ id: userId }, updateData);
+  }
+
+  async createGoogleUser(data: {
+    email: string;
+    name: string;
+    googleId: string;
+    avatar?: string;
+    emailVerifiedAt?: Date | null;
+    roleId: number;
+    phoneNumber: string;
+  }): Promise<UserWithRelations> {
+    const user = await this.model.create({
+      data: {
+        email: data.email,
+        name: data.name,
+        password: '', // Google users don't have password initially
+        phoneNumber: data.phoneNumber,
+        googleId: data.googleId,
+        avatar: data.avatar,
+        emailVerifiedAt: data.emailVerifiedAt,
+        roleId: data.roleId,
+        status: 'ACTIVE',
+      },
+      include: {
+        role: {
+          include: {
+            permissions: true,
+          },
+        },
+      },
+    });
+
+    return user;
+  }
 }

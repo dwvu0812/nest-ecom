@@ -157,7 +157,14 @@ export class AuthService {
       throw UserException.userNotFound(dto.email);
     }
 
-    // Check password
+    // Check password (skip for Google users who don't have password)
+    if (!user.password) {
+      throw ValidationException.invalidInput(
+        VALIDATION_FIELDS.PASSWORD,
+        'This account was created with Google. Please use Google login.',
+      );
+    }
+
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
     if (!isPasswordValid) {
       throw ValidationException.invalidInput(
@@ -203,6 +210,82 @@ export class AuthService {
         email: user.email,
         name: user.name,
         role: user.role,
+      },
+      accessToken,
+      refreshToken,
+    };
+  }
+
+  async googleLogin(googleUser: {
+    googleId: string;
+    email: string;
+    name: string;
+    firstName: string;
+    lastName: string;
+    picture?: string;
+    emailVerified: boolean;
+    accessToken?: string;
+    refreshToken?: string;
+  }) {
+    // Tìm user bằng Google ID hoặc email
+    let user = await this.usersService.findByGoogleId(googleUser.googleId);
+
+    if (!user) {
+      // Tìm bằng email để link với tài khoản hiện có
+      user = await this.usersService.findByEmail(googleUser.email);
+
+      if (user) {
+        // Link Google ID với tài khoản hiện có
+        await this.usersService.linkGoogleAccount(
+          user.id,
+          googleUser.googleId,
+          googleUser.picture,
+        );
+      } else {
+        // Tạo user mới từ Google
+        const defaultRole = await this.usersService.getDefaultRole();
+        user = await this.usersService.createGoogleUser({
+          email: googleUser.email,
+          name: googleUser.name,
+          googleId: googleUser.googleId,
+          avatar: googleUser.picture,
+          emailVerifiedAt: googleUser.emailVerified ? new Date() : null,
+          roleId: defaultRole.id,
+          phoneNumber: '', // Có thể để trống, user sẽ update sau
+        });
+      }
+    }
+
+    // Kiểm tra trạng thái account
+    if (user.status === 'BLOCKED') {
+      throw UserException.accountBlocked(user.email);
+    }
+
+    // Generate JWT tokens
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    const accessToken = this.jwtService.sign(payload, {
+      secret: jwtConfig.secret,
+      expiresIn: jwtConfig.expiresIn,
+    });
+
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: jwtConfig.refreshSecret,
+      expiresIn: jwtConfig.refreshExpiresIn,
+    });
+
+    return {
+      message: AUTH_MESSAGES.LOGIN_SUCCESS,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        avatar: user.avatar,
       },
       accessToken,
       refreshToken,

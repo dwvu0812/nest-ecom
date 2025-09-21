@@ -63,16 +63,17 @@ model Language {
 }
 
 model User {
-  id          Int        @id @default(autoincrement())
-  email       String     @unique
-  name        String
-  password    String
-  phoneNumber String
-  avatar      String?
-  totpSecret  String?
+  id              Int        @id @default(autoincrement())
+  email           String     @unique
+  name            String
+  password        String?
+  phoneNumber     String
+  avatar          String?
+  googleId        String?    @unique
+  totpSecret      String?
   emailVerifiedAt DateTime?
-  status      UserStatus @default(ACTIVE)
-  roleId      Int
+  status          UserStatus @default(ACTIVE)
+  roleId          Int
 
   createdById Int?
   updatedById Int?

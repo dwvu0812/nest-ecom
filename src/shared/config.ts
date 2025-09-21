@@ -55,6 +55,13 @@ const envSchema = z.object({
 
   // Timeout
   TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
+
+  // Google OAuth
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_CALLBACK_URL: z
+    .string()
+    .default('http://localhost:3000/auth/google/callback'),
 });
 
 // Parse và validate biến môi trường
@@ -134,4 +141,10 @@ export const paymentConfig = {
     secretKey: config.STRIPE_SECRET_KEY,
     webhookSecret: config.STRIPE_WEBHOOK_SECRET,
   },
+} as const;
+
+export const googleConfig = {
+  clientID: config.GOOGLE_CLIENT_ID,
+  clientSecret: config.GOOGLE_CLIENT_SECRET,
+  callbackURL: config.GOOGLE_CALLBACK_URL,
 } as const;

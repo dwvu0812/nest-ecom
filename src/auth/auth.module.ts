@@ -7,6 +7,7 @@ import { UsersModule } from '../users/users.module';
 import { RepositoryModule } from '../shared/repositories/repository.module';
 import { MailerModule } from '../mailer/mailer.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from './guards/optional-jwt-auth.guard';
 import { jwtConfig } from '../shared/config';
@@ -24,7 +25,13 @@ import { jwtConfig } from '../shared/config';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard, OptionalJwtAuthGuard],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    GoogleStrategy,
+    JwtAuthGuard,
+    OptionalJwtAuthGuard,
+  ],
   exports: [AuthService, JwtAuthGuard, OptionalJwtAuthGuard],
 })
 export class AuthModule {}

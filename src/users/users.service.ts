@@ -96,4 +96,36 @@ export class UsersService {
   async restoreUser(userId: number): Promise<User> {
     return this.userRepository.restore({ id: userId });
   }
+
+  // Google OAuth methods
+  async findByGoogleId(googleId: string) {
+    return await this.userRepository.findByGoogleId(googleId);
+  }
+
+  async linkGoogleAccount(userId: number, googleId: string, avatar?: string) {
+    return await this.userRepository.linkGoogleAccount(
+      userId,
+      googleId,
+      avatar,
+    );
+  }
+
+  async getDefaultRole() {
+    const role = await this.roleRepository.findDefaultUserRole();
+    if (!role)
+      throw ResourceException.notFound(USER_RESOURCE_NAMES.DEFAULT_USER_ROLE);
+    return role;
+  }
+
+  async createGoogleUser(data: {
+    email: string;
+    name: string;
+    googleId: string;
+    avatar?: string;
+    emailVerifiedAt?: Date | null;
+    roleId: number;
+    phoneNumber: string;
+  }) {
+    return await this.userRepository.createGoogleUser(data);
+  }
 }
