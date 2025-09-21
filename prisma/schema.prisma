@@ -70,6 +70,7 @@ model User {
   phoneNumber String
   avatar      String?
   totpSecret  String?
+  emailVerifiedAt DateTime?
   status      UserStatus @default(ACTIVE)
   roleId      Int
 

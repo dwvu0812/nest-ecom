@@ -5,8 +5,13 @@ import {
   CallHandler,
   RequestTimeoutException,
 } from '@nestjs/common';
-import { Observable, throwError, TimeoutError } from 'rxjs';
-import { catchError, timeout } from 'rxjs/operators';
+import {
+  Observable,
+  throwError,
+  TimeoutError,
+  catchError,
+  timeout,
+} from 'rxjs';
 import { serverConfig } from '../config';
 
 @Injectable()
