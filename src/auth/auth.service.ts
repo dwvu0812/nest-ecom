@@ -1,24 +1,33 @@
 import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { MailerService } from '../mailer/mailer.service';
+import { VerificationCodeRepository } from './repositories/verification-code.repository';
 import { RegisterDto } from './dto/register.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { securityConfig } from '../shared/config';
 import { UserException, ValidationException } from '../shared/exceptions';
+import {
+  VERIFICATION_CODE_TYPES,
+  OTP_CONFIG,
+  AUTH_MESSAGES,
+  VALIDATION_FIELDS,
+} from '../shared/constants';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
     private readonly mailer: MailerService,
+    private readonly verificationCodeRepository: VerificationCodeRepository,
   ) {}
 
   private generateCode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    return Math.floor(
+      OTP_CONFIG.MIN_VALUE +
+        Math.random() * (OTP_CONFIG.MAX_VALUE - OTP_CONFIG.MIN_VALUE),
+    ).toString();
   }
 
   async register(dto: RegisterDto) {
@@ -34,21 +43,20 @@ export class AuthService {
     });
 
     // Invalidate previous REGISTER codes for this email
-    await this.prisma.verificationCode.deleteMany({
-      where: { email: dto.email, type: 'REGISTER' },
-    });
+    await this.verificationCodeRepository.deleteByEmailAndType(
+      dto.email,
+      VERIFICATION_CODE_TYPES.REGISTER,
+    );
 
     const code = this.generateCode();
     const expiresAt = new Date(
       Date.now() + securityConfig.otp.expiresIn * 1000,
     );
-    await this.prisma.verificationCode.create({
-      data: {
-        email: dto.email,
-        code,
-        type: 'REGISTER',
-        expiresAt,
-      },
+    await this.verificationCodeRepository.create({
+      email: dto.email,
+      code,
+      type: 'REGISTER',
+      expiresAt,
     });
 
     await this.mailer.sendVerificationCode(
@@ -58,23 +66,20 @@ export class AuthService {
     );
 
     return {
-      message: 'Đăng ký thành công. Vui lòng kiểm tra email để xác minh.',
+      message: AUTH_MESSAGES.REGISTER_SUCCESS,
     };
   }
 
   async verifyEmail(dto: VerifyEmailDto) {
-    const code = await this.prisma.verificationCode.findFirst({
-      where: {
-        email: dto.email,
-        code: dto.code,
-        type: 'REGISTER',
-        expiresAt: { gt: new Date() },
-      },
-    });
+    const code = await this.verificationCodeRepository.findValidCode(
+      dto.email,
+      dto.code,
+      VERIFICATION_CODE_TYPES.REGISTER,
+    );
     if (!code)
       throw ValidationException.invalidInput(
-        'verification_code',
-        'Mã xác minh không hợp lệ hoặc đã hết hạn',
+        VALIDATION_FIELDS.VERIFICATION_CODE,
+        AUTH_MESSAGES.INVALID_VERIFICATION_CODE,
       );
 
     const user = await this.usersService.findByEmail(dto.email);
@@ -82,56 +87,57 @@ export class AuthService {
 
     if (user.emailVerifiedAt) {
       // cleanup any stray codes
-      await this.prisma.verificationCode.deleteMany({
-        where: { email: dto.email, type: 'REGISTER' },
-      });
-      return { message: 'Email đã được xác minh trước đó.' };
+      await this.verificationCodeRepository.deleteByEmailAndType(
+        dto.email,
+        VERIFICATION_CODE_TYPES.REGISTER,
+      );
+      return { message: AUTH_MESSAGES.EMAIL_ALREADY_VERIFIED };
     }
 
     await this.usersService.markEmailVerified(user.id);
-    await this.prisma.verificationCode.deleteMany({
-      where: { email: dto.email, type: 'REGISTER' },
-    });
+    await this.verificationCodeRepository.deleteByEmailAndType(
+      dto.email,
+      VERIFICATION_CODE_TYPES.REGISTER,
+    );
 
-    return { message: 'Xác minh email thành công.' };
+    return { message: AUTH_MESSAGES.EMAIL_VERIFIED_SUCCESS };
   }
 
   async resendVerification(dto: ResendVerificationDto) {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) throw UserException.userNotFound(dto.email);
     if (user.emailVerifiedAt) {
-      return { message: 'Email đã được xác minh.' };
+      return { message: AUTH_MESSAGES.EMAIL_ALREADY_VERIFIED_RESEND };
     }
 
     // Throttle: prevent resending within 60s
-    const existing = await this.prisma.verificationCode.findFirst({
-      where: {
-        email: dto.email,
-        type: 'REGISTER',
-        expiresAt: { gt: new Date() },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    if (existing) {
-      const createdAt = existing.createdAt as unknown as Date;
-      if (createdAt && Date.now() - new Date(createdAt).getTime() < 60_000) {
-        throw ValidationException.invalidInput(
-          'resend_request',
-          'Vui lòng chờ ít nhất 60 giây trước khi yêu cầu lại',
-        );
-      }
+    const isRecentlyCreated =
+      await this.verificationCodeRepository.isCodeRecentlyCreated(
+        dto.email,
+        VERIFICATION_CODE_TYPES.REGISTER,
+        OTP_CONFIG.RESEND_THROTTLE_SECONDS,
+      );
+    if (isRecentlyCreated) {
+      throw ValidationException.invalidInput(
+        VALIDATION_FIELDS.RESEND_REQUEST,
+        AUTH_MESSAGES.RESEND_THROTTLE,
+      );
     }
 
-    await this.prisma.verificationCode.deleteMany({
-      where: { email: dto.email, type: 'REGISTER' },
-    });
+    await this.verificationCodeRepository.deleteByEmailAndType(
+      dto.email,
+      VERIFICATION_CODE_TYPES.REGISTER,
+    );
 
     const code = this.generateCode();
     const expiresAt = new Date(
       Date.now() + securityConfig.otp.expiresIn * 1000,
     );
-    await this.prisma.verificationCode.create({
-      data: { email: dto.email, code, type: 'REGISTER', expiresAt },
+    await this.verificationCodeRepository.create({
+      email: dto.email,
+      code,
+      type: VERIFICATION_CODE_TYPES.REGISTER,
+      expiresAt,
     });
 
     await this.mailer.sendVerificationCode(
@@ -139,6 +145,6 @@ export class AuthService {
       code,
       securityConfig.otp.expiresIn,
     );
-    return { message: 'Đã gửi lại mã xác minh qua email.' };
+    return { message: AUTH_MESSAGES.RESEND_SUCCESS };
   }
 }

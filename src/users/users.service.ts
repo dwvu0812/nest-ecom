@@ -1,25 +1,48 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { User } from '@prisma/client';
+import { UserRepository } from './repositories/user.repository';
+import { RoleRepository } from './repositories/role.repository';
 import { ResourceException } from '../shared/exceptions';
+import {
+  USER_STATUS,
+  USER_DEFAULTS,
+  USER_RESOURCE_NAMES,
+} from '../shared/constants';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly roleRepository: RoleRepository,
+  ) {}
 
-  async findByEmail(email: string) {
-    return await this.prisma.user.findUnique({ where: { email } });
+  async findByEmail(email: string): Promise<User | null> {
+    return await this.userRepository.findByEmail(email);
   }
 
-  async markEmailVerified(userId: number, when: Date = new Date()) {
-    return await this.prisma.user.update({
-      where: { id: userId },
-      data: { emailVerifiedAt: when },
-    });
+  async findByEmailWithRole(email: string) {
+    return await this.userRepository.findByEmailWithRole(email);
+  }
+
+  async findById(id: number): Promise<User | null> {
+    return await this.userRepository.findUnique({ id });
+  }
+
+  async findByIdWithRole(id: number) {
+    return await this.userRepository.findByIdWithRole(id);
+  }
+
+  async markEmailVerified(
+    userId: number,
+    when: Date = new Date(),
+  ): Promise<User> {
+    return await this.userRepository.markEmailVerified(userId, when);
   }
 
   async getDefaultUserRoleId(): Promise<number> {
-    const role = await this.prisma.role.findFirst({ where: { name: 'user' } });
-    if (!role) throw ResourceException.notFound('Default user role');
+    const role = await this.roleRepository.findDefaultUserRole();
+    if (!role)
+      throw ResourceException.notFound(USER_RESOURCE_NAMES.DEFAULT_USER_ROLE);
     return role.id;
   }
 
@@ -28,17 +51,49 @@ export class UsersService {
     name: string;
     password: string;
     phoneNumber: string;
-  }) {
+    createdById?: number;
+  }): Promise<User> {
     const roleId = await this.getDefaultUserRoleId();
-    return this.prisma.user.create({
-      data: {
-        email: params.email,
-        name: params.name,
-        password: params.password,
-        phoneNumber: params.phoneNumber,
-        roleId,
-        emailVerifiedAt: null,
-      },
+    return this.userRepository.createUser({
+      email: params.email,
+      name: params.name,
+      password: params.password,
+      phoneNumber: params.phoneNumber,
+      roleId,
+      createdById: params.createdById,
     });
+  }
+
+  async updateUserStatus(
+    userId: number,
+    status: typeof USER_STATUS.ACTIVE | typeof USER_STATUS.BLOCKED,
+    updatedBy?: number,
+  ): Promise<User> {
+    return this.userRepository.updateUserStatus(userId, status, updatedBy);
+  }
+
+  async searchUsers(
+    query: string,
+    limit: number = USER_DEFAULTS.SEARCH_LIMIT,
+  ): Promise<User[]> {
+    return this.userRepository.searchUsers(query, limit);
+  }
+
+  async getUsersWithPagination(params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    roleId?: number;
+    status?: typeof USER_STATUS.ACTIVE | typeof USER_STATUS.BLOCKED;
+  }) {
+    return this.userRepository.getUsersWithPagination(params);
+  }
+
+  async softDeleteUser(userId: number, deletedBy?: number): Promise<User> {
+    return this.userRepository.softDelete({ id: userId }, deletedBy);
+  }
+
+  async restoreUser(userId: number): Promise<User> {
+    return this.userRepository.restore({ id: userId });
   }
 }

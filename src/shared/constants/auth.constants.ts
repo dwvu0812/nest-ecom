@@ -1,0 +1,19 @@
+export const VERIFICATION_CODE_TYPES = {
+  REGISTER: 'REGISTER',
+  PASSWORD_RESET: 'PASSWORD_RESET',
+  EMAIL_CHANGE: 'EMAIL_CHANGE',
+} as const;
+
+export type VerificationCodeType =
+  (typeof VERIFICATION_CODE_TYPES)[keyof typeof VERIFICATION_CODE_TYPES];
+
+export const OTP_CONFIG = {
+  LENGTH: 6,
+  MIN_VALUE: 100000,
+  MAX_VALUE: 900000,
+  RESEND_THROTTLE_SECONDS: 60,
+} as const;
+
+export const SECURITY_CONSTANTS = {
+  DEFAULT_BCRYPT_ROUNDS: 12,
+} as const;
