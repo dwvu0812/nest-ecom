@@ -6,6 +6,10 @@ export const AUTH_MESSAGES = {
   EMAIL_ALREADY_VERIFIED_RESEND: 'Email đã được xác minh.',
   RESEND_THROTTLE: 'Vui lòng chờ ít nhất 60 giây trước khi yêu cầu lại',
   RESEND_SUCCESS: 'Đã gửi lại mã xác minh qua email.',
+  LOGIN_SUCCESS: 'Đăng nhập thành công.',
+  INVALID_CREDENTIALS: 'Email hoặc mật khẩu không đúng.',
+  EMAIL_NOT_VERIFIED: 'Vui lòng xác minh email trước khi đăng nhập.',
+  ACCOUNT_BLOCKED: 'Tài khoản đã bị khóa.',
 } as const;
 
 export const VALIDATION_FIELDS = {

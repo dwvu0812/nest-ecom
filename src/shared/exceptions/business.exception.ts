@@ -56,6 +56,14 @@ export class UserException extends BusinessException {
       HttpStatus.UNAUTHORIZED,
     );
   }
+
+  static accountBlocked(email: string) {
+    return new UserException(
+      `Tài khoản ${email} đã bị khóa`,
+      'ACCOUNT_BLOCKED',
+      HttpStatus.FORBIDDEN,
+    );
+  }
 }
 
 /**

@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { UsersService } from '../users/users.service';
 import { MailerService } from '../mailer/mailer.service';
 import { VerificationCodeRepository } from './repositories/verification-code.repository';
 import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
-import { securityConfig } from '../shared/config';
+import { securityConfig, jwtConfig } from '../shared/config';
 import { UserException, ValidationException } from '../shared/exceptions';
 import {
   VERIFICATION_CODE_TYPES,
@@ -21,6 +23,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly mailer: MailerService,
     private readonly verificationCodeRepository: VerificationCodeRepository,
+    private readonly jwtService: JwtService,
   ) {}
 
   private generateCode(): string {
@@ -146,5 +149,63 @@ export class AuthService {
       securityConfig.otp.expiresIn,
     );
     return { message: AUTH_MESSAGES.RESEND_SUCCESS };
+  }
+
+  async login(dto: LoginDto) {
+    const user = await this.usersService.findByEmailWithRole(dto.email);
+    if (!user) {
+      throw UserException.userNotFound(dto.email);
+    }
+
+    // Check password
+    const isPasswordValid = await bcrypt.compare(dto.password, user.password);
+    if (!isPasswordValid) {
+      throw ValidationException.invalidInput(
+        VALIDATION_FIELDS.PASSWORD,
+        AUTH_MESSAGES.INVALID_CREDENTIALS,
+      );
+    }
+
+    // Check if email is verified
+    if (!user.emailVerifiedAt) {
+      throw ValidationException.invalidInput(
+        VALIDATION_FIELDS.EMAIL,
+        AUTH_MESSAGES.EMAIL_NOT_VERIFIED,
+      );
+    }
+
+    // Check if account is blocked
+    if (user.status === 'BLOCKED') {
+      throw UserException.accountBlocked(user.email);
+    }
+
+    // Generate tokens
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    const accessToken = this.jwtService.sign(payload, {
+      secret: jwtConfig.secret,
+      expiresIn: jwtConfig.expiresIn,
+    });
+
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: jwtConfig.refreshSecret,
+      expiresIn: jwtConfig.refreshExpiresIn,
+    });
+
+    return {
+      message: AUTH_MESSAGES.LOGIN_SUCCESS,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+      accessToken,
+      refreshToken,
+    };
   }
 }
