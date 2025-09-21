@@ -19,12 +19,11 @@ const envSchema = z.object({
     .min(32, 'JWT_REFRESH_SECRET phải có ít nhất 32 ký tự'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
 
-  // Email/SMTP
-  SMTP_HOST: z.string().optional(),
-  SMTP_PORT: z.coerce.number().int().positive().default(587),
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
-  FROM_EMAIL: z.string().email().optional(),
+  // Email (Resend)
+  RESEND_API_KEY: z
+    .string()
+    .min(1, 'RESEND_API_KEY là bắt buộc cho dịch vụ email'),
+  FROM_EMAIL: z.email().optional(),
 
   // File Upload
   MAX_FILE_SIZE: z.coerce.number().int().positive().default(5242880), // 5MB
@@ -101,11 +100,8 @@ export const jwtConfig = {
 } as const;
 
 export const emailConfig = {
-  smtp: {
-    host: config.SMTP_HOST,
-    port: config.SMTP_PORT,
-    user: config.SMTP_USER,
-    pass: config.SMTP_PASS,
+  resend: {
+    apiKey: config.RESEND_API_KEY,
   },
   from: config.FROM_EMAIL,
 } as const;

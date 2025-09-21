@@ -1,26 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
-import nodemailer, { Transporter } from 'nodemailer';
+import { Resend } from 'resend';
 import { emailConfig, securityConfig } from '../shared/config';
 
 @Injectable()
 export class MailerService {
   private readonly logger = new Logger(MailerService.name);
-  private transporter?: Transporter;
+  private readonly resend: Resend;
 
   constructor() {
-    const { host, port, user, pass } = emailConfig.smtp;
-    if (host && user && pass) {
-      this.transporter = nodemailer.createTransport({
-        host,
-        port,
-        secure: port === 465,
-        auth: { user, pass },
-      });
-    } else {
-      this.logger.warn(
-        'SMTP config missing; emails will be logged instead of sent.',
-      );
+    if (!emailConfig.resend.apiKey) {
+      throw new Error('RESEND_API_KEY is required for email service');
     }
+
+    this.resend = new Resend(emailConfig.resend.apiKey);
+    this.logger.log('Email service initialized with Resend');
   }
 
   async sendVerificationCode(
@@ -33,16 +26,33 @@ export class MailerService {
       expiresInSec / 60,
     )} phút.`;
 
-    if (!this.transporter) {
-      this.logger.log(`[DEV-EMAIL] To: ${to} | ${subject} | ${text}`);
-      return;
-    }
+    await this.sendEmail(to, subject, text);
+  }
 
-    await this.transporter.sendMail({
-      from: emailConfig.from || emailConfig.smtp.user,
-      to,
-      subject,
-      text,
-    });
+  /**
+   * Gửi email sử dụng Resend
+   */
+  async sendEmail(
+    to: string,
+    subject: string,
+    text: string,
+    html?: string,
+  ): Promise<void> {
+    try {
+      const result = await this.resend.emails.send({
+        from: emailConfig.from || 'onboarding@resend.dev',
+        to,
+        subject,
+        text,
+        html,
+      });
+
+      this.logger.log(
+        `Email sent successfully via Resend to: ${to}, ID: ${result.data?.id}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to send email via Resend to: ${to}`, error);
+      throw error;
+    }
   }
 }
