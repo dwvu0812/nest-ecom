@@ -19,6 +19,17 @@ export const AUTH_MESSAGES = {
   INVALID_RESET_CODE: 'Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.',
   GOOGLE_ACCOUNT_NO_PASSWORD:
     'Tài khoản này được tạo bằng Google và không có mật khẩu để đặt lại.',
+
+  // 2FA Messages
+  TWO_FA_SETUP_REQUIRED: 'Vui lòng xác minh mã TOTP để kích hoạt 2FA.',
+  TWO_FA_ENABLED_SUCCESS: '2FA đã được kích hoạt thành công.',
+  TWO_FA_DISABLED_SUCCESS: '2FA đã được tắt thành công.',
+  TWO_FA_ALREADY_ENABLED: '2FA đã được kích hoạt trước đó.',
+  TWO_FA_NOT_ENABLED: '2FA chưa được kích hoạt cho tài khoản này.',
+  TWO_FA_REQUIRED: 'Cần xác minh 2FA để hoàn tất đăng nhập.',
+  TWO_FA_LOGIN_SUCCESS: 'Đăng nhập 2FA thành công.',
+  INVALID_2FA_CODE: 'Mã 2FA không hợp lệ hoặc đã hết hạn.',
+  INVALID_TEMP_TOKEN: 'Token tạm thời không hợp lệ hoặc đã hết hạn.',
 } as const;
 
 export const VALIDATION_FIELDS = {

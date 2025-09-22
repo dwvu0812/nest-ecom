@@ -1,26 +1,29 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  Param,
   Post,
-  UseGuards,
   Req,
   Res,
-  Delete,
-  Param,
+  UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { VerifyEmailDto } from './dto/verify-email.dto';
-import { ResendVerificationDto } from './dto/resend-verification.dto';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { CurrentUser } from './decorators/current-user.decorator';
 import type { Response } from 'express';
+import { AuthService } from './auth.service';
+import { CurrentUser } from './decorators/current-user.decorator';
+import { Disable2FADto } from './dto/disable-2fa.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { LoginWith2FADto } from './dto/login-with-2fa.dto';
+import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { RegisterDto } from './dto/register.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { Verify2FADto } from './dto/verify-2fa.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -147,5 +150,45 @@ export class AuthController {
     throw new Error(
       'Not implemented yet - requires google-auth-library for token verification',
     );
+  }
+
+  // =============================================================================
+  // 2FA Endpoints
+  // =============================================================================
+
+  @Post('2fa/setup')
+  @UseGuards(JwtAuthGuard)
+  setup2FA(@CurrentUser() user: any) {
+    return this.authService.setup2FA(user.id);
+  }
+
+  @Post('2fa/verify')
+  @UseGuards(JwtAuthGuard)
+  verify2FA(@CurrentUser() user: any, @Body() dto: Verify2FADto) {
+    return this.authService.verify2FA(user.id, dto);
+  }
+
+  @Delete('2fa/disable')
+  @UseGuards(JwtAuthGuard)
+  disable2FA(@CurrentUser() user: any, @Body() dto: Disable2FADto) {
+    return this.authService.disable2FA(user.id, dto);
+  }
+
+  @Post('2fa/login')
+  loginWith2FA(@Body() dto: LoginWith2FADto, @Req() req: any) {
+    const deviceInfo = {
+      ip: req.ip,
+      userAgent: req.get('user-agent') || '',
+    };
+    return this.authService.loginWith2FA(dto, deviceInfo);
+  }
+
+  @Get('2fa/status')
+  @UseGuards(JwtAuthGuard)
+  async get2FAStatus(@CurrentUser() user: any) {
+    return {
+      is2FAEnabled: user.is2FAEnabled || false,
+      hasSecret: !!user.totpSecret,
+    };
   }
 }

@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import * as QRCode from 'qrcode';
+import { TOTP, Secret } from 'otpauth';
 import { UsersService } from '../users/users.service';
 import { MailerService } from '../mailer/mailer.service';
 import { VerificationCodeRepository } from './repositories/verification-code.repository';
@@ -10,11 +12,15 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { Verify2FADto } from './dto/verify-2fa.dto';
+import { Disable2FADto } from './dto/disable-2fa.dto';
+import { LoginWith2FADto } from './dto/login-with-2fa.dto';
 import { securityConfig, jwtConfig } from '../shared/config';
 import { UserException, ValidationException } from '../shared/exceptions';
 import {
   VERIFICATION_CODE_TYPES,
   OTP_CONFIG,
+  TOTP_CONFIG,
   AUTH_MESSAGES,
   VALIDATION_FIELDS,
 } from '../shared/constants';
@@ -298,6 +304,19 @@ export class AuthService {
       throw UserException.accountBlocked(user.email);
     }
 
+    // Check if 2FA is enabled
+    if (user.is2FAEnabled && user.totpSecret) {
+      // Generate temporary token for 2FA verification
+      const tempToken = this.generateTempToken(user.email);
+
+      return {
+        message: AUTH_MESSAGES.TWO_FA_REQUIRED,
+        requires2FA: true,
+        tempToken,
+      };
+    }
+
+    // Continue with normal login flow (no 2FA)
     // Device tracking
     const device = await this.deviceService.identifyOrCreateDevice(
       user.id,
@@ -474,5 +493,247 @@ export class AuthService {
       accessToken,
       refreshToken,
     };
+  }
+
+  // =============================================================================
+  // 2FA Methods
+  // =============================================================================
+
+  /**
+   * Initiate 2FA setup for a user - Generate secret and QR code
+   */
+  async setup2FA(userId: number) {
+    const user = await this.usersService.findByIdWithRole(userId);
+    if (!user) {
+      throw UserException.userNotFound(`User ID: ${userId}`);
+    }
+
+    if (user.is2FAEnabled) {
+      throw ValidationException.invalidInput(
+        'totp',
+        AUTH_MESSAGES.TWO_FA_ALREADY_ENABLED,
+      );
+    }
+
+    // Generate a new TOTP secret
+    const secret = new Secret({ size: TOTP_CONFIG.SECRET_SIZE });
+    const totp = new TOTP({
+      issuer: TOTP_CONFIG.ISSUER,
+      label: user.email,
+      algorithm: TOTP_CONFIG.ALGORITHM,
+      digits: TOTP_CONFIG.DIGITS,
+      period: TOTP_CONFIG.PERIOD,
+      secret: secret.base32,
+    });
+
+    // Generate QR code
+    const uri = totp.toString();
+    const qrCodeDataURL = await QRCode.toDataURL(uri);
+
+    // Temporarily store the secret (will be confirmed when user verifies)
+    await this.usersService.updateTotpSecret(userId, secret.base32);
+
+    return {
+      message: AUTH_MESSAGES.TWO_FA_SETUP_REQUIRED,
+      secret: secret.base32,
+      qrCode: qrCodeDataURL,
+      uri,
+    };
+  }
+
+  /**
+   * Verify TOTP code and enable 2FA
+   */
+  async verify2FA(userId: number, dto: Verify2FADto) {
+    const user = await this.usersService.findByIdWithRole(userId);
+    if (!user) {
+      throw UserException.userNotFound(`User ID: ${userId}`);
+    }
+
+    if (user.is2FAEnabled) {
+      throw ValidationException.invalidInput(
+        'totp',
+        AUTH_MESSAGES.TWO_FA_ALREADY_ENABLED,
+      );
+    }
+
+    if (!user.totpSecret) {
+      throw ValidationException.invalidInput(
+        'totp',
+        'Vui lòng thiết lập 2FA trước khi xác minh.',
+      );
+    }
+
+    // Verify the TOTP code
+    if (!this.verifyTOTPCode(user.totpSecret, dto.code)) {
+      throw ValidationException.invalidInput(
+        'code',
+        AUTH_MESSAGES.INVALID_2FA_CODE,
+      );
+    }
+
+    // Enable 2FA for the user
+    await this.usersService.enable2FA(userId);
+
+    return {
+      message: AUTH_MESSAGES.TWO_FA_ENABLED_SUCCESS,
+    };
+  }
+
+  /**
+   * Disable 2FA for a user
+   */
+  async disable2FA(userId: number, dto: Disable2FADto) {
+    const user = await this.usersService.findByIdWithRole(userId);
+    if (!user) {
+      throw UserException.userNotFound(`User ID: ${userId}`);
+    }
+
+    if (!user.is2FAEnabled) {
+      throw ValidationException.invalidInput(
+        'totp',
+        AUTH_MESSAGES.TWO_FA_NOT_ENABLED,
+      );
+    }
+
+    // Verify password
+    if (
+      !user.password ||
+      !(await bcrypt.compare(dto.password, user.password))
+    ) {
+      throw ValidationException.invalidInput(
+        VALIDATION_FIELDS.PASSWORD,
+        AUTH_MESSAGES.INVALID_CREDENTIALS,
+      );
+    }
+
+    // Verify TOTP code
+    if (!user.totpSecret || !this.verifyTOTPCode(user.totpSecret, dto.code)) {
+      throw ValidationException.invalidInput(
+        'code',
+        AUTH_MESSAGES.INVALID_2FA_CODE,
+      );
+    }
+
+    // Disable 2FA
+    await this.usersService.disable2FA(userId);
+
+    return {
+      message: AUTH_MESSAGES.TWO_FA_DISABLED_SUCCESS,
+    };
+  }
+
+  /**
+   * Login with 2FA - complete the login process after initial credential verification
+   */
+  async loginWith2FA(dto: LoginWith2FADto, deviceInfo: DeviceInfo) {
+    // Verify temp token
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(dto.tempToken, {
+        secret: jwtConfig.secret,
+      });
+    } catch {
+      throw ValidationException.invalidInput(
+        'tempToken',
+        AUTH_MESSAGES.INVALID_TEMP_TOKEN,
+      );
+    }
+
+    const user = await this.usersService.findByEmailWithRole(payload.email);
+    if (!user || !user.is2FAEnabled) {
+      throw ValidationException.invalidInput(
+        'user',
+        'Tài khoản không hợp lệ hoặc chưa bật 2FA.',
+      );
+    }
+
+    // Verify TOTP code
+    if (!user.totpSecret || !this.verifyTOTPCode(user.totpSecret, dto.code)) {
+      throw ValidationException.invalidInput(
+        'code',
+        AUTH_MESSAGES.INVALID_2FA_CODE,
+      );
+    }
+
+    // Device tracking
+    const device = await this.deviceService.identifyOrCreateDevice(
+      user.id,
+      deviceInfo,
+    );
+
+    // Generate final tokens
+    const tokenPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      deviceId: device.id,
+    };
+
+    const accessToken = this.jwtService.sign(tokenPayload, {
+      secret: jwtConfig.secret,
+      expiresIn: jwtConfig.expiresIn,
+    });
+
+    const refreshToken = this.jwtService.sign(tokenPayload, {
+      secret: jwtConfig.refreshSecret,
+      expiresIn: jwtConfig.refreshExpiresIn,
+    });
+
+    // Create session record
+    await this.sessionService.createSession({
+      userId: user.id,
+      deviceId: device.id,
+      accessToken,
+      refreshToken,
+      ip: deviceInfo.ip,
+      userAgent: deviceInfo.userAgent,
+      expiresAt: new Date(
+        Date.now() + parseDuration(jwtConfig.refreshExpiresIn),
+      ),
+    });
+
+    return {
+      message: AUTH_MESSAGES.TWO_FA_LOGIN_SUCCESS,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        avatar: user.avatar,
+      },
+      accessToken,
+      refreshToken,
+    };
+  }
+
+  /**
+   * Verify TOTP code against secret
+   */
+  private verifyTOTPCode(secret: string, code: string): boolean {
+    const totp = new TOTP({
+      issuer: TOTP_CONFIG.ISSUER,
+      algorithm: TOTP_CONFIG.ALGORITHM,
+      digits: TOTP_CONFIG.DIGITS,
+      period: TOTP_CONFIG.PERIOD,
+      secret,
+    });
+
+    // Validate with window to account for clock drift
+    const delta = totp.validate({ token: code, window: TOTP_CONFIG.WINDOW });
+    return delta !== null;
+  }
+
+  /**
+   * Generate temporary token for 2FA login process
+   */
+  private generateTempToken(email: string): string {
+    return this.jwtService.sign(
+      { email, temp: true },
+      {
+        secret: jwtConfig.secret,
+        expiresIn: '5m', // Temporary token expires in 5 minutes
+      },
+    );
   }
 }

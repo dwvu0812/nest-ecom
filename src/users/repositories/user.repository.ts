@@ -204,4 +204,23 @@ export class UserRepository extends BaseRepository<User> {
   async updatePassword(userId: number, hashedPassword: string): Promise<User> {
     return this.update({ id: userId }, { password: hashedPassword } as any);
   }
+
+  // =============================================================================
+  // 2FA Methods
+  // =============================================================================
+
+  async updateTotpSecret(userId: number, totpSecret: string): Promise<User> {
+    return this.update({ id: userId }, { totpSecret } as any);
+  }
+
+  async enable2FA(userId: number): Promise<User> {
+    return this.update({ id: userId }, { is2FAEnabled: true } as any);
+  }
+
+  async disable2FA(userId: number): Promise<User> {
+    return this.update({ id: userId }, {
+      is2FAEnabled: false,
+      totpSecret: null,
+    } as any);
+  }
 }

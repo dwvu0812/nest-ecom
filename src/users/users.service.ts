@@ -132,4 +132,20 @@ export class UsersService {
   async updatePassword(userId: number, hashedPassword: string): Promise<User> {
     return await this.userRepository.updatePassword(userId, hashedPassword);
   }
+
+  // =============================================================================
+  // 2FA Methods
+  // =============================================================================
+
+  async updateTotpSecret(userId: number, totpSecret: string): Promise<User> {
+    return await this.userRepository.updateTotpSecret(userId, totpSecret);
+  }
+
+  async enable2FA(userId: number): Promise<User> {
+    return await this.userRepository.enable2FA(userId);
+  }
+
+  async disable2FA(userId: number): Promise<User> {
+    return await this.userRepository.disable2FA(userId);
+  }
 }
