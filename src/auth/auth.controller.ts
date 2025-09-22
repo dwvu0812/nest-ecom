@@ -6,6 +6,8 @@ import {
   UseGuards,
   Req,
   Res,
+  Delete,
+  Param,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
@@ -16,6 +18,8 @@ import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { Response } from 'express';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { DeviceInfoDto } from './dto/device-info.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -27,8 +31,8 @@ export class AuthController {
   }
 
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(@Body() dto: LoginDto, @Body() deviceInfo: DeviceInfoDto) {
+    return this.authService.login(dto, deviceInfo);
   }
 
   @Post('verify-email')
@@ -39,6 +43,47 @@ export class AuthController {
   @Post('resend-verification')
   resend(@Body() dto: ResendVerificationDto) {
     return this.authService.resendVerification(dto);
+  }
+
+  @Post('refresh')
+  refreshToken(
+    @Body() dto: RefreshTokenDto,
+    @Body() deviceInfo: DeviceInfoDto,
+  ) {
+    return this.authService.refreshToken(dto.refreshToken, deviceInfo);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('sessions/:refreshToken')
+  async logout(@Param('refreshToken') refreshToken: string) {
+    return this.authService.logout(refreshToken);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('sessions')
+  async logoutAll(@CurrentUser() user: any) {
+    return this.authService.logoutAllDevices(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('sessions')
+  async getSessions(@CurrentUser() user: any) {
+    return this.authService.getActiveSessions(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('devices')
+  async getDevices(@CurrentUser() user: any) {
+    return this.authService.getUserDevices(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('devices/:deviceId')
+  async revokeDevice(
+    @CurrentUser() user: any,
+    @Param('deviceId') deviceId: number,
+  ) {
+    return this.authService.revokeDevice(user.id, deviceId);
   }
 
   @Get('profile')

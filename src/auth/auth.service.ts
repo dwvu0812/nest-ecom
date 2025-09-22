@@ -16,6 +16,10 @@ import {
   AUTH_MESSAGES,
   VALIDATION_FIELDS,
 } from '../shared/constants';
+import { DeviceService, DeviceInfo } from './device.service';
+import { SessionService } from './session.service';
+import { parseDuration } from '../shared/utils';
+import { AuthException } from '../shared/exceptions';
 
 @Injectable()
 export class AuthService {
@@ -24,6 +28,8 @@ export class AuthService {
     private readonly mailer: MailerService,
     private readonly verificationCodeRepository: VerificationCodeRepository,
     private readonly jwtService: JwtService,
+    private readonly deviceService: DeviceService,
+    private readonly sessionService: SessionService,
   ) {}
 
   private generateCode(): string {
@@ -151,7 +157,7 @@ export class AuthService {
     return { message: AUTH_MESSAGES.RESEND_SUCCESS };
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, deviceInfo: DeviceInfo) {
     const user = await this.usersService.findByEmailWithRole(dto.email);
     if (!user) {
       throw UserException.userNotFound(dto.email);
@@ -186,23 +192,38 @@ export class AuthService {
       throw UserException.accountBlocked(user.email);
     }
 
-    // Generate tokens
+    // Device tracking
+    const device = await this.deviceService.identifyOrCreateDevice(
+      user.id,
+      deviceInfo,
+    );
+    // Generate token payload with device context
     const payload = {
       sub: user.id,
       email: user.email,
       role: user.role,
+      deviceId: device.id,
     };
-
     const accessToken = this.jwtService.sign(payload, {
       secret: jwtConfig.secret,
       expiresIn: jwtConfig.expiresIn,
     });
-
     const refreshToken = this.jwtService.sign(payload, {
       secret: jwtConfig.refreshSecret,
       expiresIn: jwtConfig.refreshExpiresIn,
     });
-
+    // Create session record
+    await this.sessionService.createSession({
+      userId: user.id,
+      deviceId: device.id,
+      accessToken,
+      refreshToken,
+      ip: deviceInfo.ip,
+      userAgent: deviceInfo.userAgent,
+      expiresAt: new Date(
+        Date.now() + parseDuration(jwtConfig.refreshExpiresIn),
+      ),
+    });
     return {
       message: AUTH_MESSAGES.LOGIN_SUCCESS,
       user: {
@@ -213,6 +234,63 @@ export class AuthService {
       },
       accessToken,
       refreshToken,
+      device: { id: device.id },
+    };
+  }
+
+  async refreshToken(token: string, deviceInfo: DeviceInfo) {
+    const session = await this.sessionService.validateRefreshToken(token);
+    if (!session) {
+      throw AuthException.invalidToken();
+    }
+    await this.deviceService.updateLastActive(session.deviceId);
+    const payload = {
+      sub: session.userId,
+      email: session.user.email,
+      role: session.user.role,
+      deviceId: session.deviceId,
+    };
+    const accessToken = this.jwtService.sign(payload, {
+      secret: jwtConfig.secret,
+      expiresIn: jwtConfig.expiresIn,
+    });
+    await this.sessionService.updateSession(session.id, {
+      accessToken,
+      lastUsedAt: new Date(),
+      ip: deviceInfo.ip,
+    });
+    return { accessToken, refreshToken: token };
+  }
+
+  async logout(token: string) {
+    await this.sessionService.deactivateSession(token);
+    return {
+      message: AUTH_MESSAGES.LOGOUT_SUCCESS || 'Logged out successfully',
+    };
+  }
+
+  async logoutAllDevices(userId: number) {
+    await this.sessionService.deactivateAllUserSessions(userId);
+    return {
+      message:
+        AUTH_MESSAGES.LOGOUT_ALL_SUCCESS || 'Logged out from all devices',
+    };
+  }
+
+  async getActiveSessions(userId: number) {
+    return this.sessionService.getActiveUserSessions(userId);
+  }
+
+  async getUserDevices(userId: number) {
+    return this.deviceService.getUserDevices(userId);
+  }
+
+  async revokeDevice(userId: number, deviceId: number) {
+    await this.sessionService.revokeDeviceSessions(userId, deviceId);
+    await this.deviceService.deactivateDevice(deviceId);
+    return {
+      message:
+        AUTH_MESSAGES.DEVICE_REVOKE_SUCCESS || 'Device revoked successfully',
     };
   }
 

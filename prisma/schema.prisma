@@ -91,6 +91,8 @@ model User {
 
   userTranslations UserTranslation[]
   refreshTokens    RefreshToken[]
+  devices          Device[] // added for device tracking
+  sessions         UserSession[] // added for session management
   cartItems        CartItem[]
   orders           Order[]
   reviews          Review[]
@@ -173,6 +175,55 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id])
 
   @@index([expiresAt])
+}
+
+model Device {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  deviceId     String   @unique @db.VarChar(1000)
+  deviceName   String
+  deviceType   String
+  browser      String?
+  os           String?
+  ip           String
+  userAgent    String   @db.Text
+  isActive     Boolean  @default(true)
+  lastActiveAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id])
+  sessions UserSession[]
+
+  @@index([userId])
+  @@index([deviceId])
+  @@index([lastActiveAt])
+}
+
+model UserSession {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  deviceId     Int
+  refreshToken String   @unique @db.VarChar(1000)
+  accessToken  String?  @db.Text
+  ip           String
+  userAgent    String   @db.Text
+  isActive     Boolean  @default(true)
+  expiresAt    DateTime
+  lastUsedAt   DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id])
+  device Device @relation(fields: [deviceId], references: [id])
+
+  @@index([userId])
+  @@index([deviceId])
+  @@index([refreshToken])
+  @@index([expiresAt])
+  @@index([lastUsedAt])
 }
 
 model Permission {

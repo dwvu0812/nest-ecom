@@ -11,6 +11,8 @@ import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from './guards/optional-jwt-auth.guard';
 import { jwtConfig } from '../shared/config';
+import { DeviceService } from './device.service';
+import { SessionService } from './session.service';
 
 @Module({
   imports: [
@@ -27,11 +29,19 @@ import { jwtConfig } from '../shared/config';
   controllers: [AuthController],
   providers: [
     AuthService,
+    DeviceService,
+    SessionService,
     JwtStrategy,
     GoogleStrategy,
     JwtAuthGuard,
     OptionalJwtAuthGuard,
   ],
-  exports: [AuthService, JwtAuthGuard, OptionalJwtAuthGuard],
+  exports: [
+    AuthService,
+    JwtAuthGuard,
+    OptionalJwtAuthGuard,
+    DeviceService,
+    SessionService,
+  ],
 })
 export class AuthModule {}
