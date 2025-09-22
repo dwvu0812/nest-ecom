@@ -1,7 +1,6 @@
 export const VERIFICATION_CODE_TYPES = {
   REGISTER: 'REGISTER',
-  PASSWORD_RESET: 'PASSWORD_RESET',
-  EMAIL_CHANGE: 'EMAIL_CHANGE',
+  FORGOT_PASSWORD: 'FORGOT_PASSWORD',
 } as const;
 
 export type VerificationCodeType =

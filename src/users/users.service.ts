@@ -128,4 +128,8 @@ export class UsersService {
   }) {
     return await this.userRepository.createGoogleUser(data);
   }
+
+  async updatePassword(userId: number, hashedPassword: string): Promise<User> {
+    return await this.userRepository.updatePassword(userId, hashedPassword);
+  }
 }

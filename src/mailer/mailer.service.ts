@@ -29,6 +29,26 @@ export class MailerService {
     await this.sendEmail(to, subject, text);
   }
 
+  async sendPasswordResetCode(
+    to: string,
+    code: string,
+    expiresInSec: number = securityConfig.otp.expiresIn,
+  ): Promise<void> {
+    const subject = 'Mã đặt lại mật khẩu';
+    const text = `Mã đặt lại mật khẩu của bạn là ${code}. Mã hết hạn sau ${Math.floor(
+      expiresInSec / 60,
+    )} phút. Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.`;
+
+    await this.sendEmail(to, subject, text);
+  }
+
+  async sendPasswordResetConfirmation(to: string): Promise<void> {
+    const subject = 'Mật khẩu đã được thay đổi thành công';
+    const text = `Mật khẩu của bạn đã được thay đổi thành công. Nếu bạn không thực hiện hành động này, vui lòng liên hệ với chúng tôi ngay lập tức.`;
+
+    await this.sendEmail(to, subject, text);
+  }
+
   /**
    * Gửi email sử dụng Resend
    */

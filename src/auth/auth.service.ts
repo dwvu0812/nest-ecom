@@ -8,6 +8,8 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { securityConfig, jwtConfig } from '../shared/config';
 import { UserException, ValidationException } from '../shared/exceptions';
 import {
@@ -155,6 +157,110 @@ export class AuthService {
       securityConfig.otp.expiresIn,
     );
     return { message: AUTH_MESSAGES.RESEND_SUCCESS };
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const user = await this.usersService.findByEmail(dto.email);
+
+    // Always return success message for security (don't reveal if email exists)
+    // But only send email if user exists and has a password
+    if (user && user.password) {
+      // Check if user account is not blocked
+      if (user.status === 'BLOCKED') {
+        // For security, still return success but don't send email
+        return { message: AUTH_MESSAGES.FORGOT_PASSWORD_SUCCESS };
+      }
+
+      // Throttle: prevent resending within 60s
+      const isRecentlyCreated =
+        await this.verificationCodeRepository.isCodeRecentlyCreated(
+          dto.email,
+          VERIFICATION_CODE_TYPES.FORGOT_PASSWORD,
+          OTP_CONFIG.RESEND_THROTTLE_SECONDS,
+        );
+      if (isRecentlyCreated) {
+        throw ValidationException.invalidInput(
+          VALIDATION_FIELDS.RESEND_REQUEST,
+          AUTH_MESSAGES.RESEND_THROTTLE,
+        );
+      }
+
+      // Invalidate previous FORGOT_PASSWORD codes for this email
+      await this.verificationCodeRepository.deleteByEmailAndType(
+        dto.email,
+        VERIFICATION_CODE_TYPES.FORGOT_PASSWORD,
+      );
+
+      const code = this.generateCode();
+      const expiresAt = new Date(
+        Date.now() + securityConfig.otp.expiresIn * 1000,
+      );
+      await this.verificationCodeRepository.create({
+        email: dto.email,
+        code,
+        type: VERIFICATION_CODE_TYPES.FORGOT_PASSWORD,
+        expiresAt,
+      });
+
+      await this.mailer.sendPasswordResetCode(
+        dto.email,
+        code,
+        securityConfig.otp.expiresIn,
+      );
+    }
+
+    return { message: AUTH_MESSAGES.FORGOT_PASSWORD_SUCCESS };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    const code = await this.verificationCodeRepository.findValidCode(
+      dto.email,
+      dto.code,
+      VERIFICATION_CODE_TYPES.FORGOT_PASSWORD,
+    );
+    if (!code) {
+      throw ValidationException.invalidInput(
+        VALIDATION_FIELDS.VERIFICATION_CODE,
+        AUTH_MESSAGES.INVALID_RESET_CODE,
+      );
+    }
+
+    const user = await this.usersService.findByEmail(dto.email);
+    if (!user) throw UserException.userNotFound(dto.email);
+
+    // Check if this is a Google account without password
+    if (!user.password) {
+      throw ValidationException.invalidInput(
+        VALIDATION_FIELDS.PASSWORD,
+        AUTH_MESSAGES.GOOGLE_ACCOUNT_NO_PASSWORD,
+      );
+    }
+
+    // Check if account is blocked
+    if (user.status === 'BLOCKED') {
+      throw UserException.accountBlocked(user.email);
+    }
+
+    // Hash new password and update
+    const hashedPassword = await bcrypt.hash(
+      dto.newPassword,
+      securityConfig.bcryptRounds,
+    );
+    await this.usersService.updatePassword(user.id, hashedPassword);
+
+    // Delete the used verification code
+    await this.verificationCodeRepository.deleteByEmailAndType(
+      dto.email,
+      VERIFICATION_CODE_TYPES.FORGOT_PASSWORD,
+    );
+
+    // Invalidate all user sessions for security
+    await this.sessionService.deactivateAllUserSessions(user.id);
+
+    // Send confirmation email
+    await this.mailer.sendPasswordResetConfirmation(dto.email);
+
+    return { message: AUTH_MESSAGES.RESET_PASSWORD_SUCCESS };
   }
 
   async login(dto: LoginDto, deviceInfo: DeviceInfo) {

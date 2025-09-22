@@ -15,11 +15,12 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { Response } from 'express';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { DeviceInfoDto } from './dto/device-info.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -31,7 +32,11 @@ export class AuthController {
   }
 
   @Post('login')
-  login(@Body() dto: LoginDto, @Body() deviceInfo: DeviceInfoDto) {
+  login(@Body() dto: LoginDto, @Req() req: any) {
+    const deviceInfo = {
+      ip: req.ip || req.connection.remoteAddress,
+      userAgent: req.get('User-Agent') || '',
+    };
     return this.authService.login(dto, deviceInfo);
   }
 
@@ -45,11 +50,22 @@ export class AuthController {
     return this.authService.resendVerification(dto);
   }
 
+  @Post('forgot-password')
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Post('reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
+  }
+
   @Post('refresh')
-  refreshToken(
-    @Body() dto: RefreshTokenDto,
-    @Body() deviceInfo: DeviceInfoDto,
-  ) {
+  refreshToken(@Body() dto: RefreshTokenDto, @Req() req: any) {
+    const deviceInfo = {
+      ip: req.ip || req.connection.remoteAddress,
+      userAgent: req.get('User-Agent') || '',
+    };
     return this.authService.refreshToken(dto.refreshToken, deviceInfo);
   }
 

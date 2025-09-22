@@ -200,4 +200,8 @@ export class UserRepository extends BaseRepository<User> {
 
     return user;
   }
+
+  async updatePassword(userId: number, hashedPassword: string): Promise<User> {
+    return this.update({ id: userId }, { password: hashedPassword } as any);
+  }
 }

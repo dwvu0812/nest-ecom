@@ -13,6 +13,12 @@ export const AUTH_MESSAGES = {
   INVALID_CREDENTIALS: 'Email hoặc mật khẩu không đúng.',
   EMAIL_NOT_VERIFIED: 'Vui lòng xác minh email trước khi đăng nhập.',
   ACCOUNT_BLOCKED: 'Tài khoản đã bị khóa.',
+  FORGOT_PASSWORD_SUCCESS:
+    'Nếu email tồn tại trong hệ thống, chúng tôi đã gửi mã đặt lại mật khẩu.',
+  RESET_PASSWORD_SUCCESS: 'Đặt lại mật khẩu thành công.',
+  INVALID_RESET_CODE: 'Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.',
+  GOOGLE_ACCOUNT_NO_PASSWORD:
+    'Tài khoản này được tạo bằng Google và không có mật khẩu để đặt lại.',
 } as const;
 
 export const VALIDATION_FIELDS = {
