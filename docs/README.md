@@ -6,6 +6,19 @@ Tài liệu kỹ thuật cho NestJS E-commerce application.
 
 ## 📖 Danh mục tài liệu
 
+### 🌐 Language Management System
+
+Complete documentation về hệ thống quản lý ngôn ngữ.
+
+- **[Language API](./languages/language-api.md)** - API endpoints cho quản lý ngôn ngữ hệ thống
+- **[Language API Examples](./languages/api-examples.md)** - Testing examples và Postman collection
+
+### 🔐 Authentication System
+
+Complete documentation về hệ thống xác thực người dùng.
+
+- **[Login API](./authentication/login-api.md)** - API endpoints cho đăng nhập và xác thực
+
 ### 🚨 Exception Handling System
 
 Comprehensive documentation về hệ thống xử lý exceptions.
@@ -20,7 +33,12 @@ Comprehensive documentation về hệ thống xử lý exceptions.
 
 ### 🎯 Quick Links
 
-#### For Developers
+#### For API Developers
+
+- **[Language API](./languages/language-api.md)** - Language management endpoints
+- **[Login API](./authentication/login-api.md)** - Authentication và JWT tokens
+
+#### For Backend Developers
 
 - [Usage Guide](./exception-handling/usage-guide.md) - Bắt đầu từ đây để sử dụng exception handling
 - [Custom Business Exceptions](./exception-handling/business-exceptions.md) - Cách tạo và sử dụng custom exceptions
@@ -33,6 +51,8 @@ Comprehensive documentation về hệ thống xử lý exceptions.
 
 #### For API Consumers
 
+- **[Language API](./languages/language-api.md)** - Language management API reference
+- **[Login API](./authentication/login-api.md)** - Authentication API reference
 - [Error Codes Reference](./exception-handling/error-codes.md) - API error codes và response format
 
 ## 🚀 Getting Started

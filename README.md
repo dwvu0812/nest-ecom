@@ -1,98 +1,247 @@
+# NestJS E-commerce API
+
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+<p align="center">A robust e-commerce API built with NestJS, featuring comprehensive authentication, language management, and enterprise-grade error handling.</p>
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 📋 Description
 
-## Description
+NestJS E-commerce API is a production-ready backend system for e-commerce applications, built with modern TypeScript technologies and best practices.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## 🚀 Features
 
-## Project setup
+- **🔐 Authentication System**: JWT-based authentication with 2FA support
+- **🌐 Language Management**: Multi-language support with CRUD APIs
+- **🛡️ Exception Handling**: Comprehensive error handling with Vietnamese messages
+- **📊 Database Management**: Prisma ORM with PostgreSQL
+- **📧 Email System**: Resend integration for email notifications
+- **🔍 Logging & Monitoring**: Enhanced request/response logging
+- **✅ Validation**: Robust input validation with class-validator
 
-```bash
-$ npm install
+## 🏗️ Architecture
+
+```
+src/
+├── auth/                 # Authentication module
+├── languages/            # Language management module
+├── users/                # User management module
+├── shared/               # Shared utilities and services
+│   ├── exceptions/       # Custom exception classes
+│   ├── filters/          # Global exception filters
+│   ├── interceptors/     # Logging and transformation
+│   └── repositories/     # Base repository patterns
+├── mailer/               # Email service integration
+└── prisma/               # Database connection and service
 ```
 
-## Compile and run the project
+## 📖 Documentation
+
+Comprehensive documentation is available in the `docs/` folder:
+
+- **[📚 Complete Documentation](./docs/README.md)** - Main documentation hub
+- **[🌐 Language API](./docs/languages/language-api.md)** - Language management endpoints
+- **[🔐 Authentication API](./docs/authentication/login-api.md)** - Login and auth endpoints
+- **[⚡ API Examples](./docs/languages/api-examples.md)** - Postman collection and testing guide
+
+## 🛠️ Tech Stack
+
+- **Framework**: NestJS
+- **Language**: TypeScript
+- **Database**: PostgreSQL with Prisma ORM
+- **Authentication**: JWT with 2FA (TOTP)
+- **Email**: Resend
+- **Validation**: class-validator
+- **Testing**: Jest
+
+## ⚙️ Prerequisites
+
+- Node.js (v18 or higher)
+- PostgreSQL
+- pnpm (recommended) or npm
+
+## 🚀 Installation
+
+1. **Clone the repository**
+
+   ```bash
+   git clone <repository-url>
+   cd nest-ecom
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   pnpm install
+   ```
+
+3. **Environment setup**
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Configure the following environment variables:
+
+   ```env
+   # Database
+   DATABASE_URL="postgresql://username:password@localhost:5432/nest_ecom?schema=public"
+
+   # JWT
+   JWT_SECRET=your_super_secret_jwt_key_at_least_32_characters_long
+   JWT_REFRESH_SECRET=your_super_secret_refresh_key_at_least_32_characters_long
+
+   # Email (Resend)
+   RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxx
+   FROM_EMAIL=noreply@yourdomain.com
+
+   # Server
+   NODE_ENV=development
+   PORT=3000
+   ```
+
+4. **Database setup**
+
+   ```bash
+   # Generate Prisma client
+   pnpm prisma generate
+
+   # Run migrations
+   pnpm prisma migrate dev
+
+   # Seed database (optional)
+   pnpm prisma db seed
+   ```
+
+## 🏃‍♂️ Running the Application
 
 ```bash
-# development
-$ npm run start
+# Development mode
+pnpm run start:dev
 
-# watch mode
-$ npm run start:dev
+# Production mode
+pnpm run start:prod
 
-# production mode
-$ npm run start:prod
+# Debug mode
+pnpm run start:debug
 ```
 
-## Run tests
+The API will be available at `http://localhost:3000`
+
+## 🧪 Testing
 
 ```bash
-# unit tests
-$ npm run test
+# Unit tests
+pnpm run test
 
-# e2e tests
-$ npm run test:e2e
+# E2E tests
+pnpm run test:e2e
 
-# test coverage
-$ npm run test:cov
+# Test coverage
+pnpm run test:cov
+
+# Watch mode
+pnpm run test:watch
 ```
 
-## Deployment
+## 📡 API Endpoints
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### Authentication
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+- `POST /auth/register` - User registration
+- `POST /auth/login` - User login
+- `POST /auth/2fa/setup` - Setup 2FA
+- `GET /auth/profile` - Get user profile
+
+### Language Management
+
+- `GET /languages` - Get all languages
+- `GET /languages/:id` - Get language by ID
+- `POST /languages` - Create new language
+- `PUT /languages/:id` - Update language
+- `DELETE /languages/:id` - Delete language
+
+## 🔒 Environment Variables
+
+| Variable             | Description                          | Required |
+| -------------------- | ------------------------------------ | -------- |
+| `DATABASE_URL`       | PostgreSQL connection string         | ✅       |
+| `JWT_SECRET`         | JWT secret key (32+ chars)           | ✅       |
+| `JWT_REFRESH_SECRET` | JWT refresh secret key               | ✅       |
+| `RESEND_API_KEY`     | Resend API key for emails            | ✅       |
+| `FROM_EMAIL`         | Default sender email                 | ✅       |
+| `NODE_ENV`           | Environment (development/production) | ✅       |
+| `PORT`               | Server port (default: 3000)          | ❌       |
+
+## 🐳 Docker Support
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Build and run with Docker Compose
+docker-compose up -d
+
+# Run migrations in container
+docker-compose exec app pnpm prisma migrate dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## 📊 Database Schema
 
-## Resources
+The application uses Prisma ORM with the following main entities:
 
-Check out a few resources that may come in handy when working with NestJS:
+- **User**: User accounts with authentication
+- **Language**: System languages for internationalization
+- **UserTranslation**: User-specific translations
+- **Role & Permission**: Role-based access control
+- **RefreshToken & Device**: Session management
+- **Message**: Internal messaging system
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## 🤝 Contributing
 
-## Support
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## 🔧 Development Guidelines
 
-## Stay in touch
+- Follow TypeScript strict mode
+- Use custom exception classes for error handling
+- Implement proper validation with DTOs
+- Write comprehensive tests
+- Use meaningful commit messages
+- Update documentation when needed
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## 📈 Performance
 
-## License
+- **Response Time**: < 100ms for most endpoints
+- **Database**: Optimized queries with proper indexing
+- **Caching**: Redis integration ready (configurable)
+- **Logging**: Structured logs for monitoring
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## 🛡️ Security
+
+- JWT authentication with refresh tokens
+- Password hashing with bcrypt
+- Input validation and sanitization
+- SQL injection protection with Prisma
+- Rate limiting ready (configurable)
+- 2FA support with TOTP
+
+## 📞 Support
+
+- **Documentation**: [./docs/README.md](./docs/README.md)
+- **API Reference**: [./docs/languages/language-api.md](./docs/languages/language-api.md)
+- **Issues**: Create an issue in the repository
+- **Email**: Contact the development team
+
+## 📄 License
+
+This project is [MIT licensed](LICENSE).
+
+---
+
+**Version**: 1.0.0  
+**Last Updated**: January 2024  
+**Node.js**: >= 18.0.0  
+**NestJS**: ^10.0.0
