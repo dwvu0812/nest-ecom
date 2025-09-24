@@ -13,6 +13,13 @@ Complete documentation về hệ thống quản lý ngôn ngữ.
 - **[Language API](./languages/language-api.md)** - API endpoints cho quản lý ngôn ngữ hệ thống
 - **[Language API Examples](./languages/api-examples.md)** - Testing examples và Postman collection
 
+### 🔐 Permission Management System
+
+Complete documentation về hệ thống quản lý permissions và quyền truy cập.
+
+- **[Permission API](./permissions/permission-api.md)** - API endpoints cho quản lý permissions
+- **[Permission API Examples](./permissions/api-examples.md)** - Testing examples và Postman collection
+
 ### 🔐 Authentication System
 
 Complete documentation về hệ thống xác thực người dùng.
@@ -36,6 +43,7 @@ Comprehensive documentation về hệ thống xử lý exceptions.
 #### For API Developers
 
 - **[Language API](./languages/language-api.md)** - Language management endpoints
+- **[Permission API](./permissions/permission-api.md)** - Permission management endpoints
 - **[Login API](./authentication/login-api.md)** - Authentication và JWT tokens
 
 #### For Backend Developers
@@ -52,6 +60,7 @@ Comprehensive documentation về hệ thống xử lý exceptions.
 #### For API Consumers
 
 - **[Language API](./languages/language-api.md)** - Language management API reference
+- **[Permission API](./permissions/permission-api.md)** - Permission management API reference
 - **[Login API](./authentication/login-api.md)** - Authentication API reference
 - [Error Codes Reference](./exception-handling/error-codes.md) - API error codes và response format
 
@@ -166,6 +175,8 @@ Exception Handling Architecture
 - ✅ Vietnamese error messages
 - ✅ Enhanced logging với request context
 - ✅ Consistent API response format
+- ✅ Permission Management System với full CRUD operations
+- ✅ Permission API documentation và examples
 
 ### Future Enhancements
 
