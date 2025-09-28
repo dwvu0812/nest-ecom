@@ -8,6 +8,7 @@ import { LanguagesModule } from './languages/languages.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { ProfileModule } from './profile/profile.module';
 import { UsersModule } from './users/users.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { UsersModule } from './users/users.module';
     PermissionsModule,
     ProfileModule,
     UsersModule,
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

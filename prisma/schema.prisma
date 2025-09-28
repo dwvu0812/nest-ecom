@@ -130,6 +130,7 @@ model User {
   updatedOrders               Order[]               @relation("OrderUpdatedBy")
   createdUserTranslations     UserTranslation[]     @relation("UserTranslationCreatedBy")
   updatedUserTranslations     UserTranslation[]     @relation("UserTranslationUpdatedBy")
+  uploadedFiles               FileUpload[]          @relation("FileUploadedBy")
 }
 
 model UserTranslation {
@@ -553,4 +554,29 @@ model Message {
   // Relations
   fromUser User @relation("MessageFrom", fields: [fromUserId], references: [id])
   toUser   User @relation("MessageTo", fields: [toUserId], references: [id])
+}
+
+model FileUpload {
+  id           String  @id @default(uuid())
+  originalName String
+  filename     String
+  mimetype     String
+  size         Int
+  category     String
+  path         String
+  url          String
+  description  String?
+  uploadedBy   Int
+  thumbnail    String?
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  uploader User @relation("FileUploadedBy", fields: [uploadedBy], references: [id])
+
+  @@index([uploadedBy])
+  @@index([category])
+  @@index([createdAt])
 }
