@@ -6,6 +6,7 @@ import {
   TransformInterceptor,
 } from './interceptor';
 import { AuditLogService } from './services';
+import { AwsS3Service } from './services/aws-s3.service';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
@@ -15,6 +16,7 @@ import { PrismaModule } from '../prisma/prisma.module';
     TransformInterceptor,
     TimeoutInterceptor,
     AuditLogService,
+    AwsS3Service,
     {
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,
@@ -33,6 +35,7 @@ import { PrismaModule } from '../prisma/prisma.module';
     LoggingInterceptor,
     TimeoutInterceptor,
     AuditLogService,
+    AwsS3Service,
   ],
 })
 export class SharedModule {}

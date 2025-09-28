@@ -4,11 +4,13 @@ import { UploadsController } from './uploads.controller';
 import { UploadsService } from './uploads.service';
 import { FileUploadRepository } from './repositories/file-upload.repository';
 import { PrismaModule } from '../prisma/prisma.module';
+import { SharedModule } from '../shared/shared.module';
 import { fileConfig } from '../shared/config';
 
 @Module({
   imports: [
     PrismaModule,
+    SharedModule,
     MulterModule.registerAsync({
       useFactory: () => ({
         dest: fileConfig.uploadPath,

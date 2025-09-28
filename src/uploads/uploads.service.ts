@@ -1,34 +1,39 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { promises as fs } from 'fs';
-import { join, extname } from 'path';
+import { extname } from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { FileUploadRepository } from './repositories/file-upload.repository';
-import {
-  FileUploadResponseDto,
-  MultipleFilesUploadResponseDto,
-  UploadStatsResponseDto,
-  FileListResponseDto,
-  UploadQueryDto,
-} from './dto';
+import { awsConfig } from '../shared/config';
+import { AwsS3Service } from '../shared/services/aws-s3.service';
 import {
   FILE_TYPE_CONFIG,
-  type UploadCategory,
   UPLOAD_CATEGORIES,
+  type UploadCategory,
 } from './constants/upload.constants';
 import {
-  FileNotProvidedException,
-  InvalidFileTypeException,
-  FileTooLargeException,
-  UploadFailedException,
-  FileNotFoundException,
+  FileListResponseDto,
+  FileUploadResponseDto,
+  MultipleFilesUploadResponseDto,
+  UploadQueryDto,
+  UploadStatsResponseDto,
+} from './dto';
+import {
   FileDeletionFailedException,
+  FileNotFoundException,
+  FileNotProvidedException,
+  FileTooLargeException,
+  InvalidFileTypeException,
+  UploadFailedException,
 } from './exceptions/upload.exceptions';
+import { FileUploadRepository } from './repositories/file-upload.repository';
 
 @Injectable()
 export class UploadsService {
   private readonly logger = new Logger(UploadsService.name);
 
-  constructor(private readonly fileUploadRepository: FileUploadRepository) {}
+  constructor(
+    private readonly fileUploadRepository: FileUploadRepository,
+    private readonly awsS3Service: AwsS3Service,
+  ) {}
 
   /**
    * Upload a single file
@@ -51,16 +56,23 @@ export class UploadsService {
       // Validate file against category rules
       this.validateFile(file, category);
 
+      // Handle different file structures for S3 vs local storage
+      const filename = awsConfig.useS3
+        ? this.extractFilenameFromS3Key((file as any).key)
+        : file.filename;
+      const filePath = awsConfig.useS3 ? (file as any).key : file.path;
+      const fileUrl = this.generateFileUrl(filename, category);
+
       // Create file record in database
       const fileRecord = await this.fileUploadRepository.create({
         id: uuidv4(),
         originalName: file.originalname,
-        filename: file.filename,
+        filename: filename,
         mimetype: file.mimetype,
         size: file.size,
         category,
-        path: file.path,
-        url: this.generateFileUrl(file.filename, category),
+        path: filePath,
+        url: fileUrl,
         description: description || null,
         uploadedBy,
         thumbnail: null,
@@ -73,11 +85,22 @@ export class UploadsService {
       this.logger.error(`Failed to upload file: ${error.message}`, error.stack);
 
       // Clean up the uploaded file if database insertion failed
-      if (file.path) {
+      if (awsConfig.useS3 && (file as any).key) {
+        try {
+          const filename = this.extractFilenameFromS3Key((file as any).key);
+          await this.awsS3Service.deleteFile(filename, category);
+        } catch (cleanupError) {
+          this.logger.warn(
+            `Failed to clean up S3 file: ${cleanupError.message}`,
+          );
+        }
+      } else if (file.path) {
         try {
           await fs.unlink(file.path);
         } catch (cleanupError) {
-          this.logger.warn(`Failed to clean up file: ${cleanupError.message}`);
+          this.logger.warn(
+            `Failed to clean up local file: ${cleanupError.message}`,
+          );
         }
       }
 
@@ -239,14 +262,28 @@ export class UploadsService {
       await this.fileUploadRepository.softDelete({ id: fileId });
 
       // Try to delete the physical file
-      try {
-        await fs.unlink(file.path);
-        this.logger.log(`Physical file deleted: ${file.path}`);
-      } catch (fileError) {
-        this.logger.warn(
-          `Failed to delete physical file: ${fileError.message}`,
-        );
-        // Don't throw here, as the database record is already marked as deleted
+      if (awsConfig.useS3) {
+        try {
+          const filename = this.extractFilenameFromS3Key(file.path);
+          await this.awsS3Service.deleteFile(
+            filename,
+            file.category as UploadCategory,
+          );
+          this.logger.log(`S3 file deleted: ${file.path}`);
+        } catch (fileError) {
+          this.logger.warn(`Failed to delete S3 file: ${fileError.message}`);
+          // Don't throw here, as the database record is already marked as deleted
+        }
+      } else {
+        try {
+          await fs.unlink(file.path);
+          this.logger.log(`Physical file deleted: ${file.path}`);
+        } catch (fileError) {
+          this.logger.warn(
+            `Failed to delete physical file: ${fileError.message}`,
+          );
+          // Don't throw here, as the database record is already marked as deleted
+        }
       }
 
       this.logger.log(`File deleted: ${fileId}`);
@@ -338,8 +375,21 @@ export class UploadsService {
    * Generate file URL for serving
    */
   private generateFileUrl(filename: string, category: UploadCategory): string {
-    const categoryPath = category === 'general' ? 'general' : category;
-    return `/uploads/${categoryPath}/${filename}`;
+    if (awsConfig.useS3) {
+      return this.awsS3Service.getFileUrl(filename, category);
+    } else {
+      const categoryPath = category === 'general' ? 'general' : category;
+      return `/uploads/${categoryPath}/${filename}`;
+    }
+  }
+
+  /**
+   * Extract filename from S3 key
+   */
+  private extractFilenameFromS3Key(s3Key: string): string {
+    // S3 key format: uploads/category/filename
+    const parts = s3Key.split('/');
+    return parts[parts.length - 1];
   }
 
   /**

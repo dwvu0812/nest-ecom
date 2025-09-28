@@ -62,6 +62,16 @@ const envSchema = z.object({
   GOOGLE_CALLBACK_URL: z
     .string()
     .default('http://localhost:3000/auth/google/callback'),
+
+  // AWS S3
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  AWS_REGION: z.string().default('us-east-1'),
+  AWS_S3_BUCKET: z.string().optional(),
+  USE_S3: z
+    .string()
+    .default('false')
+    .transform((val) => val === 'true'),
 });
 
 // Parse và validate biến môi trường
@@ -147,4 +157,14 @@ export const googleConfig = {
   clientID: config.GOOGLE_CLIENT_ID,
   clientSecret: config.GOOGLE_CLIENT_SECRET,
   callbackURL: config.GOOGLE_CALLBACK_URL,
+} as const;
+
+export const awsConfig = {
+  accessKeyId: config.AWS_ACCESS_KEY_ID,
+  secretAccessKey: config.AWS_SECRET_ACCESS_KEY,
+  region: config.AWS_REGION,
+  s3: {
+    bucket: config.AWS_S3_BUCKET,
+  },
+  useS3: config.USE_S3,
 } as const;

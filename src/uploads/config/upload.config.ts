@@ -1,13 +1,15 @@
-import { diskStorage, memoryStorage } from 'multer';
-import { extname, join } from 'path';
 import { BadRequestException } from '@nestjs/common';
+import { S3 } from 'aws-sdk';
 import { existsSync, mkdirSync } from 'fs';
+import { diskStorage, memoryStorage } from 'multer';
+import multerS3 from 'multer-s3';
+import { extname } from 'path';
+import { awsConfig, fileConfig } from '../../shared/config';
 import {
-  FILE_TYPE_CONFIG,
   DEFAULT_UPLOAD_CONFIG,
+  FILE_TYPE_CONFIG,
   UploadCategory,
 } from '../constants/upload.constants';
-import { fileConfig } from '../../shared/config';
 
 // Ensure upload directories exist
 const ensureUploadDir = (path: string): void => {
@@ -16,10 +18,22 @@ const ensureUploadDir = (path: string): void => {
   }
 };
 
-// Initialize upload directories
-Object.values(FILE_TYPE_CONFIG).forEach((config) => {
-  ensureUploadDir(config.path);
-});
+// Initialize upload directories (only for local storage)
+if (!awsConfig.useS3) {
+  Object.values(FILE_TYPE_CONFIG).forEach((config) => {
+    ensureUploadDir(config.path);
+  });
+}
+
+// Initialize S3 client for S3 uploads
+let s3Client: S3 | null = null;
+if (awsConfig.useS3) {
+  s3Client = new S3({
+    accessKeyId: awsConfig.accessKeyId,
+    secretAccessKey: awsConfig.secretAccessKey,
+    region: awsConfig.region,
+  });
+}
 
 // Create multer configuration for different upload types
 export const createUploadConfig = (
@@ -37,21 +51,51 @@ export const createUploadConfig = (
     useMemoryStorage = false,
   } = options;
 
-  const storage = useMemoryStorage
-    ? memoryStorage()
-    : diskStorage({
-        destination: categoryConfig.path,
-        filename: (req: any, file: Express.Multer.File, cb) => {
-          const userId = req.user?.id || 'anonymous';
-          const timestamp = Date.now();
-          const ext = extname(file.originalname);
-          const baseName = preserveOriginalName
-            ? file.originalname.replace(ext, '')
-            : `file-${userId}-${timestamp}`;
-          const fileName = `${baseName}${ext}`;
-          cb(null, fileName);
-        },
-      });
+  let storage;
+
+  if (useMemoryStorage) {
+    storage = memoryStorage();
+  } else if (awsConfig.useS3 && s3Client) {
+    // Use S3 storage
+    storage = multerS3({
+      s3: s3Client as any,
+      bucket: awsConfig.s3.bucket!,
+      key: (req: any, file: Express.Multer.File, cb) => {
+        const userId = req.user?.id || 'anonymous';
+        const timestamp = Date.now();
+        const ext = extname(file.originalname);
+        const baseName = preserveOriginalName
+          ? file.originalname.replace(ext, '')
+          : `file-${userId}-${timestamp}`;
+        const fileName = `${baseName}${ext}`;
+        const s3Key = `uploads/${category}/${fileName}`;
+        cb(null, s3Key);
+      },
+      contentType: (req, file, cb) => multerS3.AUTO_CONTENT_TYPE(req, file, cb),
+      metadata: (req: any, file: Express.Multer.File, cb) => {
+        cb(null, {
+          fieldName: file.fieldname,
+          userId: req.user?.id?.toString() || 'anonymous',
+          category,
+        });
+      },
+    });
+  } else {
+    // Use local disk storage
+    storage = diskStorage({
+      destination: categoryConfig.path,
+      filename: (req: any, file: Express.Multer.File, cb) => {
+        const userId = req.user?.id || 'anonymous';
+        const timestamp = Date.now();
+        const ext = extname(file.originalname);
+        const baseName = preserveOriginalName
+          ? file.originalname.replace(ext, '')
+          : `file-${userId}-${timestamp}`;
+        const fileName = `${baseName}${ext}`;
+        cb(null, fileName);
+      },
+    });
+  }
 
   return {
     storage,
@@ -118,10 +162,7 @@ export const memoryImageConfig = createUploadConfig('images', {
 export const createCustomUploadConfig = (
   category: UploadCategory,
   maxFiles: number,
-  maxSizeOverride?: number,
 ) => {
-  const categoryConfig = FILE_TYPE_CONFIG[category];
-
   return createUploadConfig(category, {
     maxFiles,
   });
