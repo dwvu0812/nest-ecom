@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { LanguagesModule } from './languages/languages.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { ProfileModule } from './profile/profile.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ProfileModule } from './profile/profile.module';
     LanguagesModule,
     PermissionsModule,
     ProfileModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -276,4 +276,150 @@ export class UserRepository extends BaseRepository<User> {
   async updateAvatar(userId: number, avatarUrl: string): Promise<User> {
     return this.update({ id: userId }, { avatar: avatarUrl } as any);
   }
+
+  // =============================================================================
+  // Admin User Management Methods
+  // =============================================================================
+
+  async createUserByAdmin(data: {
+    email: string;
+    name: string;
+    password: string;
+    phoneNumber: string;
+    roleId: number;
+    emailVerified?: boolean;
+    avatar?: string;
+    createdById: number;
+  }): Promise<User> {
+    return this.create({
+      email: data.email,
+      name: data.name,
+      password: data.password,
+      phoneNumber: data.phoneNumber,
+      roleId: data.roleId,
+      avatar: data.avatar,
+      emailVerifiedAt: data.emailVerified ? new Date() : null,
+      status: 'ACTIVE',
+      createdById: data.createdById,
+    } as any);
+  }
+
+  async updateUserByAdmin(
+    userId: number,
+    data: {
+      name?: string;
+      email?: string;
+      phoneNumber?: string;
+      avatar?: string;
+      roleId?: number;
+      status?: 'ACTIVE' | 'BLOCKED';
+      is2FAEnabled?: boolean;
+      emailVerified?: boolean;
+    },
+    updatedById: number,
+  ): Promise<User> {
+    const updateData: any = { ...data, updatedById };
+
+    if (data.emailVerified !== undefined) {
+      updateData.emailVerifiedAt = data.emailVerified ? new Date() : null;
+      delete updateData.emailVerified;
+    }
+
+    return this.update({ id: userId }, updateData);
+  }
+
+  async getUsersWithAdvancedPagination(params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    roleId?: number;
+    status?: 'ACTIVE' | 'BLOCKED';
+    createdAfter?: Date;
+    createdBefore?: Date;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    includeDeleted?: boolean;
+  }) {
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      roleId,
+      status,
+      createdAfter,
+      createdBefore,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      includeDeleted = false,
+    } = params;
+
+    const skip = (page - 1) * limit;
+    const where: any = {};
+
+    // Search functionality
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { phoneNumber: { contains: search } },
+      ];
+    }
+
+    // Filters
+    if (roleId) where.roleId = roleId;
+    if (status) where.status = status;
+
+    // Date range filters
+    if (createdAfter || createdBefore) {
+      where.createdAt = {};
+      if (createdAfter) where.createdAt.gte = createdAfter;
+      if (createdBefore) where.createdAt.lte = createdBefore;
+    }
+
+    // Handle deleted records
+    if (!includeDeleted) {
+      where.deletedAt = null;
+    }
+
+    // Build sort order
+    const orderBy: any = {};
+    orderBy[sortBy] = sortOrder;
+
+    // Use direct Prisma queries for complex includes
+    const [data, total] = await Promise.all([
+      this.model.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limit,
+        include: {
+          role: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              isActive: true,
+            },
+          },
+          _count: {
+            select: {
+              devices: { where: { isActive: true } },
+              sessions: { where: { isActive: true } },
+            },
+          },
+        },
+      }),
+      this.model.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
 }

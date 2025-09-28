@@ -7,3 +7,4 @@ alwaysApply: true
 using pnpm when install packages
 make code base consistent when add new modules
 when I request create plan, just create plan and wait my confirm before implement
+when implement new feature, make it consistence with current codebase

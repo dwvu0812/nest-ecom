@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
 
 @Controller()
@@ -10,13 +10,12 @@ export class AppController {
     return this.appService.getHello();
   }
 
-  @Get('users')
-  async getUsers() {
-    return this.appService.getUsers();
-  }
-
-  @Get('users/:id')
-  async getUserById(@Param('id') id: string) {
-    return this.appService.getUserById(+id);
+  @Get('health')
+  getHealth() {
+    return {
+      status: 'OK',
+      timestamp: new Date().toISOString(),
+      message: 'NestJS E-commerce API is running',
+    };
   }
 }

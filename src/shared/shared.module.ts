@@ -5,12 +5,16 @@ import {
   TimeoutInterceptor,
   TransformInterceptor,
 } from './interceptor';
+import { AuditLogService } from './services';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
+  imports: [PrismaModule],
   providers: [
     LoggingInterceptor,
     TransformInterceptor,
     TimeoutInterceptor,
+    AuditLogService,
     {
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,
@@ -24,6 +28,11 @@ import {
       useClass: TimeoutInterceptor,
     },
   ],
-  exports: [TransformInterceptor, LoggingInterceptor, TimeoutInterceptor],
+  exports: [
+    TransformInterceptor,
+    LoggingInterceptor,
+    TimeoutInterceptor,
+    AuditLogService,
+  ],
 })
 export class SharedModule {}

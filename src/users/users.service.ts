@@ -148,4 +148,234 @@ export class UsersService {
   async disable2FA(userId: number): Promise<User> {
     return await this.userRepository.disable2FA(userId);
   }
+
+  // =============================================================================
+  // Admin User Management Methods
+  // =============================================================================
+
+  async createUserByAdmin(params: {
+    email: string;
+    name: string;
+    password: string;
+    phoneNumber: string;
+    roleId: number;
+    emailVerified?: boolean;
+    avatar?: string;
+    createdById: number;
+  }): Promise<User> {
+    // Check if role exists
+    const role = await this.roleRepository.findUnique({ id: params.roleId });
+    if (!role) {
+      throw ResourceException.notFound('Role', params.roleId.toString());
+    }
+
+    return this.userRepository.createUserByAdmin({
+      email: params.email,
+      name: params.name,
+      password: params.password,
+      phoneNumber: params.phoneNumber,
+      roleId: params.roleId,
+      emailVerified: params.emailVerified,
+      avatar: params.avatar,
+      createdById: params.createdById,
+    });
+  }
+
+  async updateUserByAdmin(
+    userId: number,
+    updateData: {
+      name?: string;
+      email?: string;
+      phoneNumber?: string;
+      avatar?: string;
+      roleId?: number;
+      status?: typeof USER_STATUS.ACTIVE | typeof USER_STATUS.BLOCKED;
+      is2FAEnabled?: boolean;
+      emailVerified?: boolean;
+    },
+    updatedById: number,
+  ): Promise<User> {
+    // Check if user exists
+    const existingUser = await this.userRepository.findUnique({ id: userId });
+    if (!existingUser) {
+      throw ResourceException.notFound('User', userId.toString());
+    }
+
+    // Check if role exists if roleId is being updated
+    if (updateData.roleId) {
+      const role = await this.roleRepository.findUnique({
+        id: updateData.roleId,
+      });
+      if (!role) {
+        throw ResourceException.notFound('Role', updateData.roleId.toString());
+      }
+    }
+
+    // Check email uniqueness if email is being updated
+    if (updateData.email && updateData.email !== existingUser.email) {
+      const existingEmailUser = await this.userRepository.findByEmail(
+        updateData.email,
+      );
+      if (existingEmailUser) {
+        throw ResourceException.alreadyExists(
+          'User with email ' + updateData.email,
+        );
+      }
+    }
+
+    return this.userRepository.updateUserByAdmin(
+      userId,
+      updateData,
+      updatedById,
+    );
+  }
+
+  async changeUserRole(
+    userId: number,
+    roleId: number,
+    updatedById: number,
+  ): Promise<User> {
+    // Check if user exists
+    const user = await this.userRepository.findUnique({ id: userId });
+    if (!user) {
+      throw ResourceException.notFound('User', userId.toString());
+    }
+
+    // Check if role exists
+    const role = await this.roleRepository.findUnique({ id: roleId });
+    if (!role || !role.isActive) {
+      throw ResourceException.notFound('Active role', roleId.toString());
+    }
+
+    return this.userRepository.update({ id: userId }, {
+      roleId,
+      updatedById,
+    } as any);
+  }
+
+  async changeUserStatus(
+    userId: number,
+    status: keyof typeof USER_STATUS,
+    updatedById: number,
+    reason?: string,
+  ): Promise<User> {
+    // Check if user exists
+    const user = await this.userRepository.findUnique({ id: userId });
+    if (!user) {
+      throw ResourceException.notFound('User', userId.toString());
+    }
+
+    // TODO: Log the status change with reason for audit
+    return this.userRepository.updateUserStatus(
+      userId,
+      status as any,
+      updatedById,
+    );
+  }
+
+  async getUsersWithAdvancedPagination(params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    roleId?: number;
+    status?: typeof USER_STATUS.ACTIVE | typeof USER_STATUS.BLOCKED;
+    createdAfter?: Date;
+    createdBefore?: Date;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    includeDeleted?: boolean;
+  }) {
+    return this.userRepository.getUsersWithAdvancedPagination(params);
+  }
+
+  async bulkUpdateUsers(
+    userIds: number[],
+    action: 'activate' | 'deactivate' | 'delete' | 'restore',
+    updatedById: number,
+    reason?: string,
+  ): Promise<{ updated: number; errors: string[] }> {
+    const errors: string[] = [];
+    let updated = 0;
+
+    for (const userId of userIds) {
+      try {
+        const user = await this.userRepository.findUnique({ id: userId });
+        if (!user) {
+          errors.push(`User ${userId} not found`);
+          continue;
+        }
+
+        switch (action) {
+          case 'activate':
+            await this.userRepository.updateUserStatus(
+              userId,
+              'ACTIVE',
+              updatedById,
+            );
+            break;
+          case 'deactivate':
+            await this.userRepository.updateUserStatus(
+              userId,
+              'BLOCKED',
+              updatedById,
+            );
+            break;
+          case 'delete':
+            await this.userRepository.softDelete({ id: userId }, updatedById);
+            break;
+          case 'restore':
+            await this.userRepository.restore({ id: userId });
+            break;
+        }
+        updated++;
+      } catch (error) {
+        errors.push(`Error updating user ${userId}: ${error.message}`);
+      }
+    }
+
+    return { updated, errors };
+  }
+
+  async getUserStatistics(): Promise<{
+    totalUsers: number;
+    activeUsers: number;
+    blockedUsers: number;
+    deletedUsers: number;
+    usersLast30Days: number;
+    roleDistribution: Array<{ roleName: string; count: number }>;
+  }> {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const [
+      totalUsers,
+      activeUsers,
+      blockedUsers,
+      deletedUsers,
+      usersLast30Days,
+      roleDistribution,
+    ] = await Promise.all([
+      this.userRepository.count({ deletedAt: null } as any),
+      this.userRepository.count({ status: 'ACTIVE', deletedAt: null } as any),
+      this.userRepository.count({ status: 'BLOCKED', deletedAt: null } as any),
+      this.userRepository.count({ deletedAt: { not: null } } as any),
+      this.userRepository.count({
+        createdAt: { gte: thirtyDaysAgo },
+        deletedAt: null,
+      } as any),
+      this.roleRepository.getRoleUsageStats(),
+    ]);
+
+    return {
+      totalUsers,
+      activeUsers,
+      blockedUsers,
+      deletedUsers,
+      usersLast30Days,
+      roleDistribution: roleDistribution.map((stat) => ({
+        roleName: stat.roleName,
+        count: stat.userCount,
+      })),
+    };
+  }
 }
