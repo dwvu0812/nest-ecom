@@ -223,4 +223,57 @@ export class UserRepository extends BaseRepository<User> {
       totpSecret: null,
     } as any);
   }
+
+  // =============================================================================
+  // Profile Methods
+  // =============================================================================
+
+  async findByIdWithTranslations(
+    id: number,
+  ): Promise<UserWithRelations | null> {
+    return this.model.findUnique({
+      where: { id },
+      include: {
+        role: {
+          include: {
+            permissions: true,
+          },
+        },
+        userTranslations: {
+          include: {
+            language: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+              },
+            },
+          },
+          where: {
+            deletedAt: null,
+          },
+        },
+      },
+    });
+  }
+
+  async updateProfile(
+    userId: number,
+    data: {
+      name?: string;
+      email?: string;
+      phoneNumber?: string;
+      avatar?: string;
+    },
+    updatedById?: number,
+  ): Promise<User> {
+    return this.update({ id: userId }, {
+      ...data,
+      updatedById,
+    } as any);
+  }
+
+  async updateAvatar(userId: number, avatarUrl: string): Promise<User> {
+    return this.update({ id: userId }, { avatar: avatarUrl } as any);
+  }
 }

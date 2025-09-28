@@ -26,6 +26,15 @@ Complete documentation về hệ thống xác thực người dùng.
 
 - **[Login API](./authentication/login-api.md)** - API endpoints cho đăng nhập và xác thực
 
+### 👤 Profile Management System
+
+Complete documentation về hệ thống quản lý profile người dùng.
+
+- **[Profile System Overview](./profile/README.md)** - Tổng quan về profile management system
+- **[Profile API](./profile/profile-api.md)** - API endpoints cho quản lý profile
+- **[Profile API Examples](./profile/api-examples.md)** - Usage examples và integration guide
+- **[Profile Usage Guide](./profile/usage-guide.md)** - Hướng dẫn implementation và best practices
+
 ### 🚨 Exception Handling System
 
 Comprehensive documentation về hệ thống xử lý exceptions.
@@ -44,6 +53,7 @@ Comprehensive documentation về hệ thống xử lý exceptions.
 
 - **[Language API](./languages/language-api.md)** - Language management endpoints
 - **[Permission API](./permissions/permission-api.md)** - Permission management endpoints
+- **[Profile API](./profile/profile-api.md)** - Profile management endpoints
 - **[Login API](./authentication/login-api.md)** - Authentication và JWT tokens
 
 #### For Backend Developers
@@ -61,6 +71,7 @@ Comprehensive documentation về hệ thống xử lý exceptions.
 
 - **[Language API](./languages/language-api.md)** - Language management API reference
 - **[Permission API](./permissions/permission-api.md)** - Permission management API reference
+- **[Profile API](./profile/profile-api.md)** - Profile management API reference
 - **[Login API](./authentication/login-api.md)** - Authentication API reference
 - [Error Codes Reference](./exception-handling/error-codes.md) - API error codes và response format
 
@@ -72,11 +83,14 @@ Comprehensive documentation về hệ thống xử lý exceptions.
 
 ## 📋 System Features
 
-### ✅ Exception Handling
+### ✅ Core Features
 
-- **Global Exception Filter** - Xử lý tất cả exceptions với consistent format
-- **Prisma Exception Filter** - Handle database errors với Vietnamese messages
-- **Custom Business Exceptions** - Type-safe exception classes cho business logic
+- **Repository Pattern** với Base Repository cho data access
+- **Exception Handling** với custom business exceptions
+- **Multi-language Support** cho content đa ngôn ngữ
+- **Permission System** cho role-based access control
+- **JWT Authentication** với session management
+- **Profile Management** - User profile với avatar upload và đa ngôn ngữ
 - **Enhanced Logging** - Detailed request/error logging với context
 - **Response Transformation** - Consistent API response format
 
@@ -177,6 +191,10 @@ Exception Handling Architecture
 - ✅ Consistent API response format
 - ✅ Permission Management System với full CRUD operations
 - ✅ Permission API documentation và examples
+- ✅ Profile Management System với complete functionality
+- ✅ Profile API documentation và comprehensive examples
+- ✅ Avatar upload system với security validation
+- ✅ Multi-language profile support
 
 ### Future Enhancements
 

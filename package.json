@@ -36,6 +36,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
     "@prisma/client": "^6.16.2",
+    "@types/multer": "^2.0.0",
     "@types/ua-parser-js": "^0.7.39",
     "bcryptjs": "^3.0.2",
     "class-transformer": "^0.5.1",
